@@ -1,5 +1,5 @@
 # main.py
-
+import webserver
 import os
 import sqlite3
 import datetime as dt
@@ -566,7 +566,7 @@ async def menu(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=MenuView())
 # ===================== RUN =====================
 
-
+webserver.keep_alive()
 if __name__ == "__main__":
     ensure_db()
     bot.run(TOKEN)
