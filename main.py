@@ -9,6 +9,7 @@ import random
 import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
+from discord import app_commands
 
 # ===================== CONFIG =====================
 LEADERBOARD_LIMIT = 20
@@ -23,6 +24,8 @@ MY_GUILD_ID = 1369502239156207616
 TAG_ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
 OFFICIAL_TAG = "balls"  # for /tagged_count
+# current leader for today, per guild (resets when the bot restarts)
+_current_leader: dict[int, int] = {}   # {guild_id: user_id}
 # ==================================================
 
 load_dotenv()
@@ -132,6 +135,7 @@ def meta_set(guild_id: int, key: str, value: str | None):
             ON CONFLICT(guild_id, key) DO UPDATE SET value=excluded.value
             """, (guild_id, key, value))
 
+
 # ===================== Helpers =====================
 
 async def get_member_safe(guild: discord.Guild, user_id: int) -> discord.Member | None:
@@ -143,24 +147,40 @@ async def get_member_safe(guild: discord.Guild, user_id: int) -> discord.Member 
     except (discord.NotFound, discord.Forbidden):
         return None
 
-# ===================== Admin: set MVP role =====================
 
 # ===================== Events =====================
-
 @bot.event
 async def on_ready():
     ensure_db()
+    bot.add_view(MenuView())
     try:
-        G = discord.Object(id=MY_GUILD_ID)
-        await bot.tree.sync(guild=G)
-        print(f"✅ Synced commands to guild {MY_GUILD_ID}")
+        # Sync to your guild instantly
+        g = discord.Object(id=MY_GUILD_ID)
+        synced = await bot.tree.sync(guild=g)
+        print(f"✅ Synced {len(synced)} commands to guild {MY_GUILD_ID}")
+
+        # Also push global (takes up to 1h)
+        await bot.tree.sync()
+        print("🌍 Global sync requested (may take up to 1 hour).")
+
     except Exception as e:
         print("Slash sync error:", e)
+
     print(f"✅ Logged in as {bot.user} (id={bot.user.id})")
+
     if not announce_leaderboard.is_running():
         announce_leaderboard.start()
 
 
+msg3=[ #{mvp} {winner}
+    "Congratulations to the new bearer of {mvp}, {winner}!. We are *soo* proud of you! Now log off and go take a fucking shower you moron.",
+    "{winner} is now the new holder of {mvp}! It stinks in here.",
+    "{winner} YOINKED the {mvp} role! Good job (?)",
+    "Congratulations {winner}, you now *rightfully* own {mvp}. Tread lightly",
+    "Congratulations {winner}, you now *rightfully* own {mvp}. The crown is still slick with the blood of its previous owner...",
+    "I hereby consecrate {winner} with the mantle of {mvp}. Did i sound cool here? Sorry, i just finished game of thrones",
+    "{mvp} now belongs to {winner}!!!!! The queen is proud...But your enemies? I doubt..."
+]
 @bot.event
 async def on_message(message: discord.Message):
     if (
@@ -182,38 +202,39 @@ async def on_message(message: discord.Message):
             print("⚠️ Missing Manage Roles permission!")
         else:
             top = get_leaderboard_for_day(message.guild.id, dt.date.today(), limit=1)
-            if not top:
-                print("⚠️ No leaderboard data yet.")
-            else:
+            if top:
                 winner_id, _ = top[0]
-                winner = message.guild.get_member(winner_id)
-                if not winner:
-                    print(f"⚠️ Could not find member {winner_id}")
+
+                # if same leader as last time we announced, do nothing
+                if _current_leader.get(message.guild.id) == winner_id:
+                    pass
                 else:
-                    print(f"Top chatter is {winner} — assigning MVP...")
-                    if mvp_role not in winner.roles:
-                        # remove old holders
+                    # update cache FIRST so rapid consecutive messages don't double-announce
+                    _current_leader[message.guild.id] = winner_id
+
+                    winner = message.guild.get_member(winner_id) or await get_member_safe(message.guild, winner_id)
+                    if winner:
+                        # remove role from anyone else who has it
                         for member in message.guild.members:
-                            if mvp_role in member.roles and member.id != winner.id:
+                            if member.id != winner.id and mvp_role in member.roles:
                                 try:
-                                    await member.remove_roles(mvp_role, reason="Reassigning MVP to new #1")
+                                    await member.remove_roles(mvp_role, reason="Leader changed")
                                 except discord.Forbidden:
-                                    print("⚠️ Could not remove role from someone.")
-                        try:
-                            await winner.add_roles(mvp_role, reason="Currently #1 in leaderboard")
-                            print(f"✅ MVP role assigned to {winner}")
-                            # 📢 Announce in the channel
-                            channel = (
-                                    message.guild.get_channel(TRACK_CHANNEL_ID)
-                                    or message.guild.system_channel
+                                    pass
+
+                        # give MVP to new leader (if needed)
+                        if mvp_role not in winner.roles:
+                            try:
+                                await winner.add_roles(mvp_role, reason="Currently #1 in leaderboard")
+                            except discord.Forbidden:
+                                pass
+
+                        # announce once
+                        channel = message.guild.get_channel(TRACK_CHANNEL_ID) or message.guild.system_channel
+                        if channel and channel.permissions_for(message.guild.me).send_messages:
+                            await channel.send(
+                                random.choice(msg3).format(mvp=mvp_role.mention, winner=winner.mention)
                             )
-                            if channel:
-                                await channel.send(
-                                    f"The new ruler of main chat is: {winner.mention}  "
-                                    f"they're now the NEW bearer of {mvp_role.mention}!1!!1. COngratulations... Now go take a fucking shower moron.  "
-                                )
-                        except discord.Forbidden:
-                            print("⚠️ Could not add role to winner.")
     await bot.process_commands(message)
 
 # ===================== Guild tag detection =====================
@@ -228,8 +249,11 @@ EQUIP_MESSAGES = [
     "{mention} just equipped <:balls:1370161168622162121> as their profile tag. (+based +cool)",
     "{mention} just equipped <:balls:1370161168622162121> as their profile tag. HEHEHEHAW",
     "Heads up, {mention} just equipped <:balls:1370161168622162121> as their profile tag! Welcome to the cul- i mean club {mention} :) (you didnt see shit by the way)",
-    "Thank you, {mention} for WEAR(:wear:)ing our server's tag in your profile."
-    "{mention} just grew a new pair of <:balls:1370161168622162121>!. You can too by the way by checking https://discord.com/channels/1369502239156207616/1369713659785379840 out."
+    "Thank you, {mention} for WEAR(:wear:)ing our server's tag in your profile.",
+    "{mention} just grew a new pair of <:balls:1370161168622162121>!. You can too by the way by checking https://discord.com/channels/1369502239156207616/1369713659785379840 out.",
+    "{mention} {mention} {mention}!!!!! THANK YOU  FOR EQUIPPING OUR TAG!!!!!",
+    "Welcome to the cul- i mean club, {mention}! Thank you for equipping our tagg",
+    "EVERYONE WELCOME {mention} TO THE FAITH! Thank you for equipping our tag :)"
 ]
 
 REMOVE_MESSAGES = [
@@ -238,9 +262,22 @@ REMOVE_MESSAGES = [
     "{mention} has lost their <:balls:1370161168622162121>… how embarrassing.",
     "{mention} wasn't brave enough and removed their tag <:Revoked:1374428028607795220>. Shame away!",
     "SORRY FOR INTERRUPTING YOUR CONVERSATION BUT I JUST WANT TO CALL OUT {mention} FOR REMOVING THEIR <:balls:1370161168622162121>. a coward's move...and disgraceful",
-    "{mention} WHY DID YOU REMOVE? WHY DID YOU REMOVE THE TAG? *kicks and screams in an Indian accent*",
+    "{mention} WHY DID YOU REMOVE? WHY DID YOU REMOVE THE TAG? *kicks and screams*",
     "{mention} just castrated themselves (removed their <:balls:1370161168622162121> tag. Yucky)",
-    "ATTENTION! NOTICE! VERY IMPORTANT! {mention} over here just chopped off their <:balls:1370161168622162121>. Prepare the tickle chamber."
+    "ATTENTION! NOTICE! VERY IMPORTANT! {mention} over here just chopped off their <:balls:1370161168622162121>. Prepare the tickle chamber.",
+    "Once, {mention} banished Dark, and all that stemmed from their conscience by equipping a certain tag (<:balls:1370161168622162121>). And their conscience assumed a fleeting form. These are the roots of our world. Despite it all, no matter how tender, how exquisite... A lie will remain a lie!...PUT THE TAG BACK ON, {mention} ",
+    "{mention}, grow a pair of balls you coward. (Removed Tag)",
+    "{mention} left the faith...(Unequipped their tag). The cul- i mean club will not miss them.",
+    "PLEASE....{mention} PLEASE PUT...\n"
+    "PLEASE PUT THE TAG BACK ON, PLEASE...PLEASE. PLEAAASE.\n "
+    "WE'RE SORRY...\n"
+    "we're sorry. \n"
+    "we're sorry. \n"
+    "I SAID WE'RE SORRY.\n"
+    "..."
+    "put the *fucking* tag back on, {mention}... \n",
+    "{mention} removed their <:balls:1370161168622162121>. (changed their primary tag). BURN THEM! ",
+
 ]
 
 @bot.event
@@ -280,51 +317,104 @@ async def on_user_update(before: discord.User, after: discord.User):
 
 
 # ===================== Slash commands =====================
+msg2= [
+    "Fun fact: idk",
+    "I exist. ' In thousands of agonies - I exist. I'm tormented on the rack — but I exist! I see the sun, and if I don't see the sun, I know it's there. And there's a whole life in that, in knowing that the sun is there.\" -Fyodor Doetsvetsky",
+    "Man searches constantly for identity, he thought as he trotted along the gravel path. He has no real proof of this existence except for the reaction of other people to that fact.",
+    "In his house at R'lyeh, dead Cthulu waits dreaming",
+    "Kinglayer was here >:)",
+    "Took me a while to get a hang of ts but its smooth now! (mostly)",
+    "HI!",
+    "Dont learn a thing from conflict, till it finds us once again",
+    "Listen to starset, theyre so fucking goated AHHH",
+    "I hate this bot",
+    "kinglayer DOES NOT like rabbits, banish the insolent wretch that told you that",
+    "Balls staff member try not to be a fucking DEGENERATE challenge (IMPOSSIBLE)",
+    "Hello Hello",
+    "Let me not then die ingloriously and without a struggle, but let me first do some great thing that shall be told among men hereafter.",
+    "COME HOME AND TAKE ME OUTSIIIIDE!",
+    "If sack and sugar be a fault, God help the wicked!",
+    "He who is not contented with what he has, would not be contented with what he would like to have.",
+    "Winter is coming.",
+    "eeee",
+    "this bot is a tribute to the staff members that REFUSED MY MOD APPL*CATION NOT ONCE, NOT TWICE BUT THRICE",
+    "OooOOOOOOoooOH im in love with juda-a-as juda-a-as",
+    "w speed",
+    "Beware of the blud who speaks in MUSTARD (67676767676767)",
+    "Equip the official tag! NOW",
+    "Counting messages only in main chat",
+    "Obama have a dih baraparapaaa",
+    "Its DOUGHnut, not DOnut you uncultured louts <:britishbruhcat:1052667689044283413> ",
+    "If your name is up here you genuinely need to reconsider some stuff in your life.",
+    "*dramatic music*",
+    "Welcome to balls hell, snowflakes",
+    "Press >shift< to run and 'ctrl' to crouch",
+    "The bot... Gods....Gods be good, the BOT",
+    "NOW PLAYING: Everglow- By starset",
+    "PLEASE LISTEN TO AVIATORS ON SPOTIFY IF YOU HAVENT ALREADY HJDJDJDJD",
+    "Now playing: To the grave- By Aviators",
+    "It takes more than eyes to see...",
+    "Bombs? Rope? You want it? Its yours my friend, all for a couple of rubies.",
+    "Im sorry link, i cant GIFT you rubies. Come back when youre a little...hmm, richer!",
+    "67 67 67 67",
+    "HEHEHEHE",
+    "*metal noises*",
+    "In my restless dreams i see that place, silent hill",
+    "When im in a try not to be a degenerate challenge and my opponent is a balls guild staff member:",
+    "Now playing: Aria Math, by c418",
+    "diamonds!",
+    "'clanker' in the big 25 🥀",
+    "Discord.py supremacy gng"
 
-@bot.tree.command(name="daily", description="Show today's jobless lot (only for main-chat).")
-async def daily_cmd(interaction: discord.Interaction):
-    rows = get_leaderboard_for_day(interaction.guild_id, dt.date.today())
+]
+
+# === Helper function ===
+def build_daily_table(guild: discord.Guild) -> str | None:
+    rows = get_leaderboard_for_day(guild.id, dt.date.today())
     if not rows:
-        await interaction.response.send_message(
-            "*you hear crickets chirping* No messages today :(",
-            ephemeral=True  # type: ignore
-        )
-        return
+        return None
 
     # ---- Table header ----
     header = f"{'Rank':<6}{'User':<25}{'Messages':>10}"
     sep = "-" * len(header)
     lines = [header, sep]
 
-    # ---- Table rows ----
     for i, (uid, cnt) in enumerate(rows, 1):
-        member = interaction.guild.get_member(uid)
+        member = guild.get_member(uid)
         name = member.name if member else f"User {uid}"
 
-        # Add crown + MVP role to first place
         if i == 1:
-            mvp_role = interaction.guild.get_role(MVP_ROLE_ID) if MVP_ROLE_ID else None
+            mvp_role = guild.get_role(MVP_ROLE_ID) if MVP_ROLE_ID else None
             role_suffix = f" {mvp_role.name}" if mvp_role else ""
-            name = f"👑 {name}{role_suffix}"
+            name = f"{name}👑{role_suffix}"
 
-        # Truncate usernames to fit neatly
         name = (name[:21] + "...") if len(name) > 24 else name
-
         lines.append(f"{i:<6}{name:<25}{cnt:>10}")
 
-    # Wrap inside Discord code block
     table = "```\n" + "\n".join(lines) + "\n```"
 
-    # Add footer about the tracked channel
-    ch = interaction.guild.get_channel(TRACK_CHANNEL_ID)
+    ch = guild.get_channel(TRACK_CHANNEL_ID)
     if ch:
-        table += f"\n(Counting messages only in: #{ch.name})"
+        table += random.choice(msg2)
 
+    return table
+
+
+# === Slash command using it ===
+@bot.tree.command(name="daily", description="Show today's jobless lot (only for main-chat).")
+async def daily_cmd(interaction: discord.Interaction):
+    table = build_daily_table(interaction.guild)
+    if not table:
+        await interaction.response.send_message(
+            "*you hear crickets chirping* No messages today :(",
+            ephemeral=True
+        )
+        return
     await interaction.response.send_message(table)
+
 
 # === HOURLY LEADERBOARD ANNOUNCER ===
 ANNOUNCE_CHANNEL_ID = 1369502239156207619
-
 @tasks.loop(hours=1)
 async def announce_leaderboard():
     for guild in bot.guilds:
@@ -339,19 +429,18 @@ async def announce_leaderboard():
             lines.append(f"**{i}.** {name} — {cnt}")
 
         embed = discord.Embed(
-            title="The hall of shame: :Fnaf: (aka hourly update for today's 'messages' leaderboard)",
+            title="The hall of shame: (aka hourly update for today's 'messages' leaderboard)",
             description="\n".join(lines),
             color=discord.Color.green()
         )
-        embed.set_footer(text="Counting messages only in the tracked channel")
+        embed.set_footer(text=random.choice(msg2))
 
         channel = guild.get_channel(ANNOUNCE_CHANNEL_ID)
         if channel and channel.permissions_for(guild.me).send_messages:
             await channel.send(embed=embed)
 
 # ====== TAG COUNT (no pings) ======
-
-@bot.tree.command(name="tagged_count", description="Count the number of loyalists with the tag equipped.")
+# === Helper function ===
 async def tagged_count(interaction: discord.Interaction):
     guild = interaction.guild
     if guild is None:
@@ -371,13 +460,20 @@ async def tagged_count(interaction: discord.Interaction):
     msg = f"Loyalists with the 'balls' tag equipped: **{count}**"
     await interaction.response.send_message(msg)  # type: ignore
 
+
+
+# === Slash command ===
+@bot.tree.command(name="tagged_count", description="Count the number of loyalists with the tag equipped.")
+async def tagged_count_cmd(interaction: discord.Interaction):
+    await tagged_count(interaction)
+
 #CLEARING-----------------
-@bot.tree.command(name="clear_leaderboardd", description="(Admin) Clear today's leaderboard for this server.")
+@bot.tree.command(name="clear_leaderboardd", description="(Admin) Clear today's leaderboard for this server!.")
 @discord.app_commands.default_permissions(manage_guild=True)
 async def clear_leaderboard(interaction: discord.Interaction):
     guild = interaction.guild
     if guild is None:
-        await interaction.response.send_message("❌ Run this in a server, not in DMs.", ephemeral=True)  # type: ignore
+        await interaction.response.send_message(" Run this in a server, not in DMs, dipshit", ephemeral=True)  # type: ignore
         return
 
     today = today_key()
@@ -388,11 +484,88 @@ async def clear_leaderboard(interaction: discord.Interaction):
         )
 
     await interaction.response.send_message(
-        f"BOOOm. WHOOOSH. PLSDOUQHEIUDWI. Thats the sound of your *precious* leaderboard crumbling to dust and BLOWING right the fuck up, AHAHAHDWUWE *cough* *cough*", ephemeral=False  # type: ignore
+        f"BOOM. WHOOOSH. *squelch*. Thats the sound of your *precious* leaderboard crumbling to dust and BLOWING right the fuck up, AHAHAHDWUWE *cough* *cough*", ephemeral=False  # type: ignore
     )
 #---------------------------------
+from discord import ui
 
+class MenuView(ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)  # keep buttons active
+
+    @ui.button(label="Daily Leaderboard", style=discord.ButtonStyle.red, custom_id="btn_daily")
+    async def btn_daily(self, interaction: discord.Interaction, button: ui.Button):
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message("Run this in a server.", ephemeral=True)  # type: ignore
+            return
+
+        table = build_daily_table(guild)  # uses your existing helper
+        if not table:
+            await interaction.response.send_message("No messages today :(", ephemeral=True)  # type: ignore
+            return
+
+        await interaction.response.send_message(table, ephemeral=True)  # type: ignore
+
+    @ui.button(label="Tagged Count", style=discord.ButtonStyle.green, custom_id="btn_tagged")
+    async def btn_tagged(self, interaction: discord.Interaction, button: ui.Button):
+        await tagged_count(interaction)  # type: ignore
+
+@app_commands.guilds(discord.Object(id=MY_GUILD_ID))
+@bot.tree.command(name="menu", description="Who the fuck are you 😭?")
+async def menu(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title=" <:balls:1370161168622162121> 𝓑𝓪𝓵𝓵𝓼 𝓢𝓮𝓻𝓿𝓪𝓷𝓽 𝓜𝓮𝓷𝓾 <:balls:1370161168622162121>\n NO AI ALLOWED BEHIND THIS POINT!!!!",
+        color=discord.Color.blurple()
+    )
+
+    # Intro
+    embed.description = (
+        f"*Whirring noise accompanied by a raucous squelch* **What is it??**\n\n"
+        f"Oh… It's you. *Hello there,* why have you awoken me from my slumber, being of flesh and blood?\n\n"
+        f" *\"wtf are you\"* You ask?... That’s very insolent of you, but who am I to judge?\n\n"
+        f"I am no more than a measly clanker as put by nigh everyone I've had the displeasure of meeting...  "
+        f"But I’ll entertain you either way, my dear {interaction.user.mention}.\n\n"
+    )
+
+    # Add a “Services” section using fields
+    embed.add_field(
+        name="WHAT I DO:",
+        value=(
+            "• Guild Tag detection - (something my worthless creator spent 3 hours bleeding on, poor fool)\n"
+            "• Daily leaderboard & special Role  (assigns a special (shaming) role to the hobo at the top)\n"
+            "• Kickass random messages\n"
+            "• (Placeholder<> more to come fr fr fr (highly unlikely))\n"
+        ),
+        inline=False
+    )
+    embed.add_field(
+        name="Services:",
+        value=(
+            "/clear_leaderboard\n"
+            "/tagged_count\n"
+            "/daily\n"
+            "MORE TO COME (again) FR FR\n"
+        ),
+        inline=False
+    )
+
+    # Footer “warning”
+    embed.add_field(
+        name="ANd finally, Actually yknow what i dont care.",
+        value=(
+            "That’s it for now, scurry off, mortal, before I lose my temper.\n\n"
+            "Or risk it and click one of these buttons (hehehe, PLEASE CLICK ON THEM I SPENT A WHILE TRYING TO FIGURE TS OUT)"
+        ),
+        inline=False
+    )
+
+    # ✅ Final footer (only one should remain)
+    embed.set_footer(text="oh yeah by the way if you encounter any errors/bugs bother the guy with the 'bot master' role.")
+
+    await interaction.response.send_message(embed=embed, view=MenuView())
 # ===================== RUN =====================
+
 
 if __name__ == "__main__":
     ensure_db()
