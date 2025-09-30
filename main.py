@@ -239,26 +239,29 @@ async def on_message(message: discord.Message):
 
 Lmsg=[
     "Howdy {mention}, we're sorry to see you go. Hope you enjoyed your stay in the balls guild. (i mean i cant blame you if you didnt- bUT WHOOPS THATS- YOU DIDNT HEAR THAT...YOU DIDNT HEAR THAT. BYE BYE ",
-    "Bye...thanks for joining the server {mention}! Hope you liked it here :) "
+    "Bye...thanks for joining the server {mention}! Hope you liked it here :). Well if you didnt, i dont blame you. WAIT NO, i do blame you, fuck. Almost slipped up there BYE. "
 ]
 CHLmg=[
-    "Bye bye {mention}! (they left the server),"
-    "{mention} left the server :(. Bye bye"
+    "Bye bye {mention}! (they left the server) That was for courtesy...I care not for your leave DESERTER",
+    "{mention} left the server :(. Bye bye craven",
+    "{mention} just left the server...Another one bites the dust, but i think of it as self pruning.",
+    "ta-ta {mention}. Good riddance. (they left the server >:( )"
 ]
+
 GOODBYE_CHANNEL_ID = 1369502239156207619  # replace with your channel ID
 
 @bot.event
 async def on_member_remove(member: discord.Member):
     # DM the user
     try:
-        await member.send(random.choice(Lmsg).format(member=member.mention))
+        await member.send(random.choice(Lmsg).format(mention=member.mention))
     except discord.Forbidden:
-        print("error :(")
+        print("Couldn't DM the user (forbidden).")
 
     # Announce in the server channel
     channel = member.guild.get_channel(GOODBYE_CHANNEL_ID)
     if channel:
-        await channel.send(random.choice(CHLmg).format(member=member.mention))
+        await channel.send(random.choice(CHLmg).format(mention=member.mention))
 
 # ===================== Guild tag detection =====================
 
