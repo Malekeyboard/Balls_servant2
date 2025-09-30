@@ -237,6 +237,29 @@ async def on_message(message: discord.Message):
                             )
     await bot.process_commands(message)
 
+Lmsg=[
+    "Howdy {mention}, we're sorry to see you go. Hope you enjoyed your stay in the balls guild. (i mean i cant blame you if you didnt- bUT WHOOPS THATS- YOU DIDNT HEAR THAT...YOU DIDNT HEAR THAT. BYE BYE ",
+    "Bye...thanks for joining the server {mention}! Hope you liked it here :) "
+]
+CHLmg=[
+    "Bye bye {mention}! (they left the server),"
+    "{mention} left the server :(. Bye bye"
+]
+GOODBYE_CHANNEL_ID = 1369502239156207619  # replace with your channel ID
+
+@bot.event
+async def on_member_remove(member: discord.Member):
+    # DM the user
+    try:
+        await member.send(random.choice(Lmsg).format(member=member.mention))
+    except discord.Forbidden:
+        print("error :(")
+
+    # Announce in the server channel
+    channel = member.guild.get_channel(GOODBYE_CHANNEL_ID)
+    if channel:
+        await channel.send(random.choice(CHLmg).format(member=member.mention))
+
 # ===================== Guild tag detection =====================
 
 EQUIP_MESSAGES = [
@@ -253,7 +276,9 @@ EQUIP_MESSAGES = [
     "{mention} just grew a new pair of <:balls:1370161168622162121>!. You can too by the way by checking https://discord.com/channels/1369502239156207616/1369713659785379840 out.",
     "{mention} {mention} {mention}!!!!! THANK YOU  FOR EQUIPPING OUR TAG!!!!!",
     "Welcome to the cul- i mean club, {mention}! Thank you for equipping our tagg",
-    "EVERYONE WELCOME {mention} TO THE FAITH! Thank you for equipping our tag :)"
+    "EVERYONE WELCOME {mention} TO THE FAITH! Thank you for equipping our tag :)",
+    "Thank you for equipping our tag, {mention} <:freak:1409627658655895664> ",
+    "TY FOR EQUIPPING OUR TAG <:Freak:1419474509290799186><:Freak:1419474509290799186><:Freak:1419474509290799186> {mention}!!!1!"
 ]
 
 REMOVE_MESSAGES = [
@@ -364,7 +389,15 @@ msg2= [
     "Now playing: Aria Math, by c418",
     "diamonds!",
     "'clanker' in the big 25 🥀",
-    "Discord.py supremacy gng"
+    "Discord.py supremacy gng",
+    "To Have Done The Things I Have Done In the Name Of Progress And Healing. It Was Madness",
+    "Feo Fuerte Y formal..",
+    "SET THE WHEELS IM COMING BACK TO THE FOOOOORE!",
+    "[click](https://www.roblox.com/game-pass/1481327895/Deafening-silence)",
+    "[click](https://www.roblox.com/game-pass/31683339/me)",
+    "<:Freak:1419474509290799186>",
+    "Something wicked this way comes",
+    "Arrakis teaches the attitude of the knife - chopping off what's incomplete and saying: 'Now, it's complete because it's ended here"
 
 ]
 
@@ -523,8 +556,8 @@ async def menu(interaction: discord.Interaction):
     embed.description = (
         f"*Whirring noise accompanied by a raucous squelch* **What is it??**\n\n"
         f"Oh… It's you. *Hello there,* why have you awoken me from my slumber, being of flesh and blood?\n\n"
-        f" *\"wtf are you\"* You ask?... That’s very insolent of you, but who am I to judge?\n\n"
-        f"I am no more than a measly clanker as put by nigh everyone I've had the displeasure of meeting...  "
+        f" *\"wtf are you\"* You ask?... That’s very insolent of you, but who am I to judge? Judging is beyond me.\n\n"
+        f"I am the 'official' bot made for the balls guild, a delightful little clanker made by a...not so very delightful person (@{742680549789007874} 🐇 *cough* 🐇 *cough*. Though my features are really kind of useless, and volatile to boot.  You're OBLIGATED to respect me cuz my mom owns this server and can get you BANNED >:( >:9 grrr "
         f"But I’ll entertain you either way, my dear {interaction.user.mention}.\n\n"
     )
 
@@ -555,7 +588,7 @@ async def menu(interaction: discord.Interaction):
         name="ANd finally, Actually yknow what i dont care.",
         value=(
             "That’s it for now, scurry off, mortal, before I lose my temper.\n\n"
-            "Or risk it and click one of these buttons (hehehe, PLEASE CLICK ON THEM I SPENT A WHILE TRYING TO FIGURE TS OUT)"
+            "Or risk it and click one of these buttons (hehehe, PLEASE CLICK ON THEM I SPENT A WHILE TRYING TO FIGURE TS OUT <:Freak:1419474509290799186>)"
         ),
         inline=False
     )

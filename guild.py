@@ -11,9 +11,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    channel = bot.get_channel(1369502239156207619)
+    channel = bot.get_channel(1369873584608116796)
     if channel:
-        await channel.send("king baldwin")
+        await channel.send("whirring noises")
     await bot.close()  # closes after sending once
 
 bot.run(TOKEN)
