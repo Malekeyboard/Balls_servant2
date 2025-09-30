@@ -153,6 +153,9 @@ async def get_member_safe(guild: discord.Guild, user_id: int) -> discord.Member 
 async def on_ready():
     ensure_db()
     bot.add_view(MenuView())
+    channel = bot.get_channel(1369873584608116796)
+    if channel:
+        await channel.send("*whirring noises*..WE BACK ONLINE BABYYY (new update)")
     try:
         # Sync to your guild instantly
         g = discord.Object(id=MY_GUILD_ID)
@@ -400,7 +403,16 @@ msg2= [
     "[click](https://www.roblox.com/game-pass/31683339/me)",
     "<:Freak:1419474509290799186>",
     "Something wicked this way comes",
-    "Arrakis teaches the attitude of the knife - chopping off what's incomplete and saying: 'Now, it's complete because it's ended here"
+    "Arrakis teaches the attitude of the knife - chopping off what's incomplete and saying: 'Now, it's complete because it's ended here",
+    "There will be times when struggle seems impossible. I know this already. Alone, unsure, dwarfed by the scale of the enemy. Remember this: freedom is a pure idea. It occurs spontaneously and without instruction. Random acts of insurrection are occurring constantly throughout the galaxy. There are whole armies, battalions that have no idea that they’ve already enlisted in the cause. Remember that the frontier of the Rebellion is everywhere. And even the smallest act of insurrection pushes our lines forward. And remember this: the imperial need for control is so desperate because it is so unnatural. Tyranny requires constant effort. It breaks, it leaks. Authority is brittle. Oppression is the mask of fear. Remember that. And know this: the day will come when all of these skirmishes and battles, these moments of defiance will have flooded the banks of the Empire’s authority and then there will be one too many. One single thing will break the siege. Remember this: Try",
+    "I burn my decency for someone else's future. I burn my life to make a sunrise that I know I'll never see. And the ego that started this fight will never have a mirror or an audience or the light of gratitude.\n\n So what do I sacrifice?\n\n\n Everything!",
+    "Welcome to the rebellion",
+    "Maybe this time you'll learn *proceeds to rip a train vertically asunder using his son's body*",
+    "Think, Mark! You'll outlast every fragile, insignificant being on this planet. You'll live to see this world crumble to dust and blow away! Everyone and everything you know will be gone!",
+    "CEECILLL! I NEED YOU CECIIIL!",
+    "youre all fucking welcome *bri'ish yap*",
+    "I don't make mistakes, I'm not just like the rest of you. I'm stronger, I'm smarter, I- I'm better! I AM BETTER!!"
+
 
 ]
 
@@ -560,7 +572,7 @@ async def menu(interaction: discord.Interaction):
         f"*Whirring noise accompanied by a raucous squelch* **What is it??**\n\n"
         f"Oh… It's you. *Hello there,* why have you awoken me from my slumber, being of flesh and blood?\n\n"
         f" *\"wtf are you\"* You ask?... That’s very insolent of you, but who am I to judge? Judging is beyond me.\n\n"
-        f"I am the 'official' bot made for the balls guild, a delightful little clanker made by a...not so very delightful person (@{742680549789007874} 🐇 *cough* 🐇 *cough*. Though my features are really kind of useless, and volatile to boot.  You're OBLIGATED to respect me cuz my mom owns this server and can get you BANNED >:( >:9 grrr "
+        f"I am the 'official' bot made for the balls guild, a delightful little clanker made by a...not so very delightful person (<@742680549789007874> 🐇 *cough* 🐇 *cough*. Though my features are really kind of useless, and volatile to boot.  You're OBLIGATED to respect me cuz my mom owns this server and can get you BANNED >:( >:9 grrr "
         f"But I’ll entertain you either way, my dear {interaction.user.mention}.\n\n"
     )
 
