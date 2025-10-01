@@ -5,6 +5,7 @@ import sqlite3
 import datetime as dt
 from contextlib import closing
 import random
+import pytz
 
 import discord
 from discord.ext import commands, tasks
@@ -153,7 +154,7 @@ async def get_member_safe(guild: discord.Guild, user_id: int) -> discord.Member 
 async def on_ready():
     ensure_db()
     bot.add_view(MenuView())
-    channel = bot.get_channel(1369873584608116796)
+    channel = bot.get_channel(1369502239156207619)
     if channel:
         await channel.send("*whirring noises*..WE BACK ONLINE BABYYY (new update)")
     try:
@@ -455,29 +456,35 @@ async def daily_cmd(interaction: discord.Interaction):
 
 # HOURLY (AUTO im so smartt ghehehe)
 ANNOUNCE_CHANNEL_ID = 1369502239156207619
+US_TZ = pytz.timezone("US/Eastern")
 @tasks.loop(hours=1)
 async def announce_leaderboard():
-    for guild in bot.guilds:
-        rows = get_leaderboard_for_day(guild.id, dt.date.today())
-        if not rows:
-            continue
+    now = dt.datetime.now(US_TZ)
+    if now.hour == 0 and now.minute == 0:
+        for guild in bot.guilds:
+            rows = get_leaderboard_for_day(guild.id, dt.date.today())
+            if not rows:
+                continue
 
-        lines = []
-        for i, (uid, cnt) in enumerate(rows, 1):
-            member = guild.get_member(uid)
-            name = member.mention if member else f"<@{uid}>"
-            lines.append(f"**{i}.** {name} — {cnt}")
+            lines = []
+            for i, (uid, cnt) in enumerate(rows, 1):
+                member = guild.get_member(uid)
+                name = member.mention if member else f"<@{uid}>"
+                lines.append(f"**{i}.** {name} — {cnt}")
 
-        embed = discord.Embed(
-            title="The hall of shame: (aka hourly update for today's 'messages' leaderboard)",
-            description="\n".join(lines),
-            color=discord.Color.green()
-        )
-        embed.set_footer(text=random.choice(msg2))
+            embed = discord.Embed(
+                title="The hall of shame: (aka hourly update for today's 'messages' leaderboard)",
+                description="\n".join(lines),
+                color=discord.Color.green()
+            )
+            embed.set_footer(text=random.choice(msg2))
 
-        channel = guild.get_channel(ANNOUNCE_CHANNEL_ID)
-        if channel and channel.permissions_for(guild.me).send_messages:
-            await channel.send(embed=embed)
+            channel = guild.get_channel(ANNOUNCE_CHANNEL_ID)
+            if channel and channel.permissions_for(guild.me).send_messages:
+                await channel.send(embed=embed)
+@announce_leaderboard.before_loop
+async def _wait_for_ready():
+    await bot.wait_until_ready()
 
 # Tag Totaller 4000 first of its name blablabla (im proud of ts)
 
