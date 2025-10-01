@@ -240,10 +240,10 @@ Lmsg=[
     "Bye...thanks for joining the server {mention}! Hope you liked it here :). Well if you didnt, i dont blame you. WAIT NO, i do blame you, fuck. Almost slipped up there BYE. "
 ]
 CHLmg=[
-    "Bye bye {mention}! (they left the server) That was for courtesy...I care not for your leave DESERTER",
-    "{mention} left the server :(. Bye bye craven",
-    "{mention} just left the server...Another one bites the dust, but i think of it as self pruning.",
-    "ta-ta {mention}. Good riddance. (they left the server >:( )"
+    "Bye bye **{mention}**({user})! (they left the server) That was for courtesy...Your absence affects us not, DESERTER!",
+    "**{mention}**({user}) left the server :(. Bye bye craven",
+    "**{mention}**({user}) just left the server...Another one bites the dust, but i think of it as self pruning.",
+    "ta-ta **{mention}**({user}). Good riddance. (they left the server >:( )"
 ]
 
 GOODBYE_CHANNEL_ID = 1369502239156207619
@@ -256,7 +256,7 @@ async def on_member_remove(member: discord.Member):
         print("Couldn't DM the user (forbidden).")
     channel = member.guild.get_channel(GOODBYE_CHANNEL_ID)
     if channel:
-        await channel.send(random.choice(CHLmg).format(mention=member.name))
+        await channel.send(random.choice(CHLmg).format(mention=member.name,user=member.mention))
 
 #tag detection thing (VERYYY IMPRTANT RAHH THIS IS ONE OF THE FEW SECTIONS I DIDNT STEAL FROM REDDIT)
 
@@ -535,7 +535,7 @@ class MenuView(ui.View):
     async def btn_daily(self, interaction: discord.Interaction, button: ui.Button):
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message("Run this in a server.", ephemeral=True)  # type: ignore
+            await interaction.response.send_message("Run this in a server dumbass", ephemeral=True)  # type: ignore
             return
 
         table = build_daily_table(guild)  # uses your existing helper
@@ -562,35 +562,7 @@ async def menu(interaction: discord.Interaction):
         f"Oh… It's you. *Hello there,* why have you awoken me from my slumber, being of flesh and blood?\n\n"
         f" *\"wtf are you\"* You ask?... That’s very insolent of you, but who am I to judge? Judging is beyond me.\n\n"
         f"I am the 'official' bot made for the balls guild, a delightful little clanker made by a...not so very delightful person (<@742680549789007874> 🐇 *cough* 🐇 *cough*. Though my features are really kind of useless, and volatile to boot.  You're OBLIGATED to respect me cuz my mom owns this server and can get you BANNED >:( >:9 grrr "
-        f"But I’ll entertain you either way, my dear {interaction.user.mention}.\n\n"
-    )
-    embed.add_field(
-        name="WHAT I DO:",
-        value=(
-            "• Guild Tag detection - (something my worthless creator spent 3 hours bleeding on, poor fool)\n"
-            "• Daily leaderboard & special Role  (assigns a special (shaming) role to the hobo at the top)\n"
-            "• Kickass random messages\n"
-            "• (Placeholder<> more to come fr fr fr (highly unlikely))\n"
-        ),
-        inline=False
-    )
-    embed.add_field(
-        name="Services:",
-        value=(
-            "/clear_leaderboard\n"
-            "/tagged_count\n"
-            "/daily\n"
-            "MORE TO COME (again) FR FR\n"
-        ),
-        inline=False
-    )
-    embed.add_field(
-        name="ANd finally, Actually yknow what i dont care.",
-        value=(
-            "That’s it for now, scurry off, mortal, before I lose my temper.\n\n"
-            "Or risk it and click one of these buttons (hehehe, PLEASE CLICK ON THEM I SPENT A WHILE TRYING TO FIGURE TS OUT <:Freak:1419474509290799186>)"
-        ),
-        inline=False
+        f"thats it for now my dear {interaction.user.mention}. I have naught else to say, check out my commands ig. ( by the way this is my first ham fisted attempt at trying out those cool discord 'button' things you see on all the popular bots so forgive me if this command is useless af <:Freak:1419474509290799186>)\n\n"
     )
     embed.set_footer(text="oh yeah by the way if you encounter any errors/bugs bother the guy with the 'bot master' role.")
 
