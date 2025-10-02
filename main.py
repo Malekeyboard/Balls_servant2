@@ -16,7 +16,7 @@ from discord import app_commands
 LEADERBOARD_LIMIT = 20
 TRACK_CHANNEL_ID = 1369502239156207619
 MVP_ROLE_ID=1419902849130954874
-
+_US_EASTERN = pytz.timezone("US/Eastern")
 
 DAILY_CROWN_HOUR = 0
 DAILY_CROWN_MINUTE = 5
@@ -79,8 +79,12 @@ def ensure_db():
         )
         """)
 
+# <<< Use US/Eastern "today" so the rollover is exactly at 12:00 AM Eastern
+ # <<<
+
 def today_key() -> str:
-    return dt.date.today().isoformat()
+    # <<< midnight boundary in US/Eastern
+    return dt.datetime.now(_US_EASTERN).date().isoformat()
 
 def day_key_of(d: dt.date) -> str:
     return d.isoformat()
@@ -88,6 +92,28 @@ def day_key_of(d: dt.date) -> str:
 def record_message(user_id: int, guild_id: int):
     key = today_key()
     with closing(db()) as conn, conn:
+        # <<< DAILY RESET (per-guild) at 12:00 AM US/Eastern
+        # We store the last day we reset in meta(guild_id, 'last_reset_day').
+        cur = conn.execute(
+            "SELECT value FROM meta WHERE guild_id=? AND key=?",
+            (guild_id, "last_reset_day"),
+        )
+        row = cur.fetchone()
+        last_reset = row["value"] if row else None
+
+        if last_reset != key:
+            # Clear previous counts for this guild so the DB "resets" each new Eastern day
+            conn.execute("DELETE FROM message_counts WHERE guild_id=?", (guild_id,))
+            # Upsert the new last_reset_day
+            conn.execute(
+                """
+                INSERT INTO meta(guild_id, key, value) VALUES(?, ?, ?)
+                ON CONFLICT(guild_id, key) DO UPDATE SET value=excluded.value
+                """,
+                (guild_id, "last_reset_day", key),
+            )
+        # <<< END DAILY RESET
+
         conn.execute("""
         INSERT INTO message_counts(user_id, guild_id, day_key, count)
         VALUES(?, ?, ?, 1)
@@ -135,7 +161,6 @@ def meta_set(guild_id: int, key: str, value: str | None):
             INSERT INTO meta(guild_id, key, value) VALUES(?, ?, ?)
             ON CONFLICT(guild_id, key) DO UPDATE SET value=excluded.value
             """, (guild_id, key, value))
-
 
 #Helper (ignore)
 
@@ -466,33 +491,34 @@ ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
 @tasks.loop(hours=1)
 async def announce_leaderboard():
+    try:
+        for guild in bot.guilds:
+            rows = get_leaderboard_for_day(guild.id, dt.date.today(), limit=20)
+            if not rows:
+                continue
 
+            lines = []
+            for i, (uid, cnt) in enumerate(rows, 1):
+                member = guild.get_member(uid)
+                name = member.mention if member else f"<@{uid}>"
+                lines.append(f"**{i}.** {name} — {cnt}")
 
-    for guild in bot.guilds:
-        rows = get_leaderboard_for_day(guild.id, dt.date.today(), limit=20)
-        if not rows:
-            continue
+            embed = discord.Embed(
+                title=f"The hall of shame: (aka hourly update for today's 'messages' leaderboard) (Resets in <t:{unix_reset}:R>)",
+                description="\n".join(lines),
+                color=discord.Color.green()
+            )
+            embed.set_footer(text=random.choice(msg2))
 
-        lines = []
-        for i, (uid, cnt) in enumerate(rows, 1):
-            member = guild.get_member(uid)
-            name = member.mention if member else f"<@{uid}>"
-            lines.append(f"**{i}.** {name} — {cnt}")
-
-        embed = discord.Embed(
-            title=f"The hall of shame: (aka hourly update for today's 'messages' leaderboard) (Resets in <t:{unix_reset}:R>)",
-            description="\n".join(lines),
-            color=discord.Color.green()
-        )
-        embed.set_footer(text=random.choice(msg2))
-
-        channel = (
-            guild.get_channel(ANNOUNCE_CHANNEL_ID)
-            or guild.system_channel
-            or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
-        )
-        if channel and channel.permissions_for(guild.me).send_messages:
-            await channel.send(embed=embed)
+            channel = (
+                guild.get_channel(ANNOUNCE_CHANNEL_ID)
+                or guild.system_channel
+                or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
+            )
+            if channel:
+                await channel.send(embed=embed)
+    except Exception as e:
+       print(f"[hourly] Failed to announce in {guild.id}: {type(e).__name__}: {e}")
 
 
 @announce_leaderboard.before_loop
