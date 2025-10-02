@@ -34,12 +34,12 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True  # make sure "Server Members Intent" is enabled in Dev Portal
+intents.members = True  
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "discord_daily.db")
 
-# ===================== DB =====================
+# DATABASES! (stole this shite from https://docs.python.org/3/library/sqlite3.html and https://www.youtube.com/watch?v=CBCZO-HL2rw)
 
 def db():
     conn = sqlite3.connect(DB_PATH)
@@ -49,7 +49,6 @@ def db():
 def ensure_db():
     with closing(db()) as conn, conn:
         c = conn.cursor()
-        # Day-based message counter
         c.execute("""
         CREATE TABLE IF NOT EXISTS message_counts(
             user_id  INTEGER NOT NULL,
@@ -59,7 +58,6 @@ def ensure_db():
             PRIMARY KEY(user_id, guild_id, day_key)
         )
         """)
-        # Generic key/value
         c.execute("""
         CREATE TABLE IF NOT EXISTS meta(
             guild_id INTEGER NOT NULL,
@@ -68,7 +66,6 @@ def ensure_db():
             PRIMARY KEY(guild_id, key)
         )
         """)
-        #tag holders mirror
         c.execute("""
         CREATE TABLE IF NOT EXISTS tag_holders(
             guild_id   INTEGER NOT NULL,
@@ -79,11 +76,9 @@ def ensure_db():
         )
         """)
 
-# <<< Use US/Eastern "today" so the rollover is exactly at 12:00 AM Eastern
- # <<<
+# FREEDOM TIMEZONE FOR YOUR HIPSTER ARSES. i should really stop using caps to talk
 
 def today_key() -> str:
-    # <<< midnight boundary in US/Eastern
     return dt.datetime.now(_US_EASTERN).date().isoformat()
 
 def day_key_of(d: dt.date) -> str:
@@ -92,8 +87,6 @@ def day_key_of(d: dt.date) -> str:
 def record_message(user_id: int, guild_id: int):
     key = today_key()
     with closing(db()) as conn, conn:
-        # <<< DAILY RESET (per-guild) at 12:00 AM US/Eastern
-        # We store the last day we reset in meta(guild_id, 'last_reset_day').
         cur = conn.execute(
             "SELECT value FROM meta WHERE guild_id=? AND key=?",
             (guild_id, "last_reset_day"),
@@ -102,9 +95,8 @@ def record_message(user_id: int, guild_id: int):
         last_reset = row["value"] if row else None
 
         if last_reset != key:
-            # Clear previous counts for this guild so the DB "resets" each new Eastern day
             conn.execute("DELETE FROM message_counts WHERE guild_id=?", (guild_id,))
-            # Upsert the new last_reset_day
+           #thing
             conn.execute(
                 """
                 INSERT INTO meta(guild_id, key, value) VALUES(?, ?, ?)
@@ -112,7 +104,7 @@ def record_message(user_id: int, guild_id: int):
                 """,
                 (guild_id, "last_reset_day", key),
             )
-        # <<< END DAILY RESET
+        #reset (FREEDOMM)
 
         conn.execute("""
         INSERT INTO message_counts(user_id, guild_id, day_key, count)
