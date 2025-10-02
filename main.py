@@ -180,7 +180,7 @@ msg3=[ #{mvp} {winner}
     "Congratulations {winner}, you now *rightfully* own {mvp}. Tread lightly",
     "Congratulations {winner}, you now *rightfully* own {mvp}. The crown is still slick with the blood of its previous owner...",
     "I hereby consecrate {winner} with the mantle of {mvp}. Did i sound cool here? Sorry, i just finished game of thrones",
-    "{mvp} now belongs to {winner}!!!!! The queen is proud...But your enemies? I doubt..."
+    "{mvp} now belongs to {winner}!!!!! The queen is proud...But your enemies?"
 ]
 @bot.event
 async def on_message(message: discord.Message):
@@ -244,7 +244,8 @@ CHLmg=[
     "Bye bye **{mention}**({user})! (they left the server) That was for courtesy...Your absence affects us not, DESERTER!",
     "**{mention}**({user}) left the server :(. Bye bye craven",
     "**{mention}**({user}) just left the server...Another one bites the dust, but i think of it as self pruning.",
-    "ta-ta **{mention}**({user}). Good riddance. (they left the server >:( )"
+    "ta-ta **{mention}**({user}). Good riddance. (they left the server >:( )",
+    "**{mention}**({user}) LEFT THE SERVER <:testicular_torsion:1373719974513741974>  "
 ]
 
 GOODBYE_CHANNEL_ID = 1369502239156207619
@@ -257,7 +258,7 @@ async def on_member_remove(member: discord.Member):
         print("Couldn't DM the user (forbidden).")
     channel = member.guild.get_channel(GOODBYE_CHANNEL_ID)
     if channel:
-        await channel.send(random.choice(CHLmg).format(mention=member.name,user=member.mention))
+        await channel.send(random.choice(CHLmg).format(mention=member.name,user=member.mention)+"https://tenor.com/view/testicular-torsion-testicular-torsion-wizard-gif-5105296058999506050")
 
 #tag detection thing (VERYYY IMPRTANT RAHH THIS IS ONE OF THE FEW SECTIONS I DIDNT STEAL FROM REDDIT)
 
@@ -301,6 +302,7 @@ REMOVE_MESSAGES = [
     "..."
     "put the *fucking* tag back on, {mention}... \n",
     "{mention} removed their <:balls:1370161168622162121>. (changed their primary tag). BURN THEM! ",
+    "<:testicular_torsion:1373719974513741974> {mention} JUST UNEQUIPPED THEIR TAG"
 
 ]
 
@@ -394,7 +396,7 @@ msg2= [
     "SET THE WHEELS IM COMING BACK TO THE FOOOOORE!",
     "[click](https://www.roblox.com/game-pass/1481327895/Deafening-silence)",
     "[click](https://www.roblox.com/game-pass/31683339/me)",
-    "<:Freak:1419474509290799186>",
+    "<a:doggif:1423159974384762951>",
     "Something wicked this way comes",
     "Arrakis teaches the attitude of the knife - chopping off what's incomplete and saying: 'Now, it's complete because it's ended here",
     "There will be times when struggle seems impossible. I know this already. Alone, unsure, dwarfed by the scale of the enemy. Remember this: freedom is a pure idea. It occurs spontaneously and without instruction. Random acts of insurrection are occurring constantly throughout the galaxy. There are whole armies, battalions that have no idea that they’ve already enlisted in the cause. Remember that the frontier of the Rebellion is everywhere. And even the smallest act of insurrection pushes our lines forward. And remember this: the imperial need for control is so desperate because it is so unnatural. Tyranny requires constant effort. It breaks, it leaks. Authority is brittle. Oppression is the mask of fear. Remember that. And know this: the day will come when all of these skirmishes and battles, these moments of defiance will have flooded the banks of the Empire’s authority and then there will be one too many. One single thing will break the siege. Remember this: Try",
@@ -408,8 +410,12 @@ msg2= [
 
 
 ]
+US_TZ = pytz.timezone("US/Eastern")
+now = dt.datetime.now(US_TZ)
+tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+unix_reset = int(tomorrow.timestamp())
 
-#(HELPER {ignore if you want ig})
+#(HELPER)
 def build_daily_table(guild: discord.Guild) -> str | None:
     rows = get_leaderboard_for_day(guild.id, dt.date.today())
     if not rows:
@@ -456,32 +462,39 @@ async def daily_cmd(interaction: discord.Interaction):
 
 # HOURLY (AUTO im so smartt ghehehe)
 ANNOUNCE_CHANNEL_ID = 1369502239156207619
-US_TZ = pytz.timezone("US/Eastern")
+
+
 @tasks.loop(hours=1)
 async def announce_leaderboard():
-    now = dt.datetime.now(US_TZ)
-    if now.hour == 0 and now.minute == 0:
-        for guild in bot.guilds:
-            rows = get_leaderboard_for_day(guild.id, dt.date.today())
-            if not rows:
-                continue
 
-            lines = []
-            for i, (uid, cnt) in enumerate(rows, 1):
-                member = guild.get_member(uid)
-                name = member.mention if member else f"<@{uid}>"
-                lines.append(f"**{i}.** {name} — {cnt}")
 
-            embed = discord.Embed(
-                title="The hall of shame: (aka hourly update for today's 'messages' leaderboard)",
-                description="\n".join(lines),
-                color=discord.Color.green()
-            )
-            embed.set_footer(text=random.choice(msg2))
+    for guild in bot.guilds:
+        rows = get_leaderboard_for_day(guild.id, dt.date.today(), limit=20)
+        if not rows:
+            continue
 
-            channel = guild.get_channel(ANNOUNCE_CHANNEL_ID)
-            if channel and channel.permissions_for(guild.me).send_messages:
-                await channel.send(embed=embed)
+        lines = []
+        for i, (uid, cnt) in enumerate(rows, 1):
+            member = guild.get_member(uid)
+            name = member.mention if member else f"<@{uid}>"
+            lines.append(f"**{i}.** {name} — {cnt}")
+
+        embed = discord.Embed(
+            title=f"The hall of shame: (aka hourly update for today's 'messages' leaderboard) (Resets in <t:{unix_reset}:R>)",
+            description="\n".join(lines),
+            color=discord.Color.green()
+        )
+        embed.set_footer(text=random.choice(msg2))
+
+        channel = (
+            guild.get_channel(ANNOUNCE_CHANNEL_ID)
+            or guild.system_channel
+            or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
+        )
+        if channel and channel.permissions_for(guild.me).send_messages:
+            await channel.send(embed=embed)
+
+
 @announce_leaderboard.before_loop
 async def _wait_for_ready():
     await bot.wait_until_ready()
@@ -569,7 +582,7 @@ async def menu(interaction: discord.Interaction):
         f"Oh… It's you. *Hello there,* why have you awoken me from my slumber, being of flesh and blood?\n\n"
         f" *\"wtf are you\"* You ask?... That’s very insolent of you, but who am I to judge? Judging is beyond me.\n\n"
         f"I am the 'official' bot made for the balls guild, a delightful little clanker made by a...not so very delightful person (<@742680549789007874> 🐇 *cough* 🐇 *cough*. Though my features are really kind of useless, and volatile to boot.  You're OBLIGATED to respect me cuz my mom owns this server and can get you BANNED >:( >:9 grrr "
-        f"thats it for now my dear {interaction.user.mention}. I have naught else to say, check out my commands ig. ( by the way this is my first ham fisted attempt at trying out those cool discord 'button' things you see on all the popular bots so forgive me if this command is useless af <:Freak:1419474509290799186>)\n\n"
+        f"thats it for now my dear {interaction.user.mention}. I have naught else to say, check out my commands ig.\n\n# (by the way this is my first ham fisted attempt at trying out those cool discord 'button' things you see on all the popular bots so forgive me if this command is useless af <a:doggif:1423159974384762951>)\n\n"
     )
     embed.set_footer(text="oh yeah by the way if you encounter any errors/bugs bother the guy with the 'bot master' role.")
 
