@@ -136,13 +136,16 @@ async def on_ready():
     if not clear_leaderboard_daily.is_running():
         clear_leaderboard_daily.start()
 
-    # Post immediately once at startup
-    await _post_hourly_once()
+    # 🔹 post once right now so you see it immediately
+    for guild in bot.guilds:
+        try:
+            await _post_hourly_update(guild)
+        except Exception as e:
+            print(f"[startup hourly] Failed in {guild.id}: {type(e).__name__}: {e}")
 
-    # Then start the hourly loop
+    # 🔹 then start the hourly loop
     if not announce_leaderboard.is_running():
         announce_leaderboard.start()
-
 
 msg3=[ #{mvp} {winner}
     "Congratulations to the new bearer of {mvp}, {winner}!. We are *soo* proud of you! Now log off and go take a fucking shower you moron.",
@@ -233,7 +236,7 @@ async def on_member_remove(member: discord.Member):
         print("Couldn't DM the user (forbidden).")
     channel = member.guild.get_channel(GOODBYE_CHANNEL_ID)
     if channel:
-        await channel.send(random.choice(CHLmg).format(mention=member.name,user=member.mention)+"[.](https://tenor.com/view/testicular-torsion-testicular-torsion-wizard-gif-5105296058999506050)")
+        await channel.send(random.choice(CHLmg).format(mention=member.name, user=member.mention),file=discord.File("bale.gif"),reference=None)
 
 #tag detection thing (VERYYY IMPRTANT RAHH THIS IS ONE OF THE FEW SECTIONS I DIDNT STEAL FROM REDDIT)
 
@@ -418,7 +421,7 @@ def build_daily_table(guild: discord.Guild) -> str | None:
 
     ch = guild.get_channel(TRACK_CHANNEL_ID)
     if ch:
-        table += random.choice(msg2)+f"(resets in <t:{unix_reset}:R>)"
+        table += random.choice(msg2)+f"\n\n(resets in <t:{unix_reset}:R>)"
 
     return table
 
@@ -435,53 +438,57 @@ async def daily_cmd(interaction: discord.Interaction):
         return
     await interaction.response.send_message(table)
 
-
-# HOURLY (AUTO im so smartt ghehehe)
 # HOURLY (AUTO)
 ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
-async def _post_hourly_once():
+# --- HOURLY (simple: fire once on boot, then every hour) ---
+ANNOUNCE_CHANNEL_ID = 1369502239156207619
+
+async def _post_hourly_update(guild: discord.Guild):
+    # compute "today" and the next midnight (US/Eastern) each time we post
+    now = dt.datetime.now(US_TZ)
+    today = now.date()
+    tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    unix_reset = int(tomorrow.timestamp())
+
+    rows = get_leaderboard_for_day(guild.id, today, limit=20)
+    if not rows:
+        # nothing to post for this guild
+        return
+
+    lines = []
+    for i, (uid, cnt) in enumerate(rows, 1):
+        member = guild.get_member(uid)
+        name = member.mention if member else f"<@{uid}>"
+        lines.append(f"**{i}.** {name} — {cnt}")
+
+    embed = discord.Embed(
+        title=f"The hall of shame: (aka hourly update for today's 'messages' leaderboard) (Resets in <t:{unix_reset}:R>)",
+        description="\n".join(lines),
+        color=discord.Color.green()
+    )
+    embed.set_footer(text=random.choice(msg2))
+
+    channel = (
+        guild.get_channel(ANNOUNCE_CHANNEL_ID)
+        or guild.system_channel
+        or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
+    )
+    if channel and channel.permissions_for(guild.me).send_messages:
+        await channel.send(embed=embed)
+
+@tasks.loop(hours=1)
+async def announce_leaderboard():
     for guild in bot.guilds:
         try:
-            now = dt.datetime.now(US_TZ)
-            today = now.date()
-            tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-            unix_reset = int(tomorrow.timestamp())
-
-            rows = get_leaderboard_for_day(guild.id, today, limit=20)
-            if not rows:
-                continue
-
-            lines = []
-            for i, (uid, cnt) in enumerate(rows, 1):
-                member = guild.get_member(uid)
-                name = member.mention if member else f"<@{uid}>"
-                lines.append(f"**{i}.** {name} — {cnt}")
-
-            embed = discord.Embed(
-                title=f"The hall of shame: (aka hourly update for today's 'messages' leaderboard) (Resets in <t:{unix_reset}:R>)",
-                description="\n".join(lines),
-                color=discord.Color.green()
-            )
-            embed.set_footer(text=random.choice(msg2))
-
-            channel = (
-                guild.get_channel(ANNOUNCE_CHANNEL_ID)
-                or guild.system_channel
-                or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
-            )
-            if channel and channel.permissions_for(guild.me).send_messages:
-                await channel.send(embed=embed)
+            await _post_hourly_update(guild)
         except Exception as e:
-            print(f"[hourly] Failed to announce in {guild.id}: {type(e).__name__}: {e}")
-
-@tasks.loop(hours=1, reconnect=True)
-async def announce_leaderboard():
-    await _post_hourly_once()
+            print(f"[hourly] Failed in {guild.id}: {type(e).__name__}: {e}")
 
 @announce_leaderboard.before_loop
 async def _wait_for_ready_hourly():
     await bot.wait_until_ready()
+
 # Tag Totaller 4000 first of its name blablabla (im proud of ts)
 
 async def tagged_count(interaction: discord.Interaction): #helper, ignore if you want
