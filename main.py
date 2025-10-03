@@ -34,12 +34,13 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True  
+intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "discord_daily.db")
 
 # DATABASES! (stole this shite from https://docs.python.org/3/library/sqlite3.html and https://www.youtube.com/watch?v=CBCZO-HL2rw)
+
 
 def db():
     conn = sqlite3.connect(DB_PATH)
@@ -58,54 +59,13 @@ def ensure_db():
             PRIMARY KEY(user_id, guild_id, day_key)
         )
         """)
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS meta(
-            guild_id INTEGER NOT NULL,
-            key      TEXT    NOT NULL,
-            value    TEXT,
-            PRIMARY KEY(guild_id, key)
-        )
-        """)
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS tag_holders(
-            guild_id   INTEGER NOT NULL,
-            user_id    INTEGER NOT NULL,
-            equipped   INTEGER NOT NULL,
-            updated_at TEXT    NOT NULL,
-            PRIMARY KEY(guild_id, user_id)
-        )
-        """)
-
-# FREEDOM TIMEZONE FOR YOUR HIPSTER ARSES. i should really stop using caps to talk
 
 def today_key() -> str:
-    return dt.datetime.now(_US_EASTERN).date().isoformat()
-
-def day_key_of(d: dt.date) -> str:
-    return d.isoformat()
+    return dt.datetime.now(US_TZ).date().isoformat()
 
 def record_message(user_id: int, guild_id: int):
     key = today_key()
     with closing(db()) as conn, conn:
-        cur = conn.execute(
-            "SELECT value FROM meta WHERE guild_id=? AND key=?",
-            (guild_id, "last_reset_day"),
-        )
-        row = cur.fetchone()
-        last_reset = row["value"] if row else None
-
-        if last_reset != key:
-            conn.execute("DELETE FROM message_counts WHERE guild_id=?", (guild_id,))
-           #thing
-            conn.execute(
-                """
-                INSERT INTO meta(guild_id, key, value) VALUES(?, ?, ?)
-                ON CONFLICT(guild_id, key) DO UPDATE SET value=excluded.value
-                """,
-                (guild_id, "last_reset_day", key),
-            )
-        #reset (FREEDOMM)
-
         conn.execute("""
         INSERT INTO message_counts(user_id, guild_id, day_key, count)
         VALUES(?, ?, ?, 1)
@@ -114,7 +74,7 @@ def record_message(user_id: int, guild_id: int):
         """, (user_id, guild_id, key))
 
 def get_leaderboard_for_day(guild_id: int, the_day: dt.date, limit: int = LEADERBOARD_LIMIT):
-    key = day_key_of(the_day)
+    key = the_day.isoformat()
     with closing(db()) as conn:
         cur = conn.execute("""
         SELECT user_id, count FROM message_counts
@@ -124,36 +84,23 @@ def get_leaderboard_for_day(guild_id: int, the_day: dt.date, limit: int = LEADER
         """, (guild_id, key, limit))
         return [(r["user_id"], r["count"]) for r in cur.fetchall()]
 
-def pick_day_winner(guild_id: int, the_day: dt.date) -> tuple[int | None, int]:
-    key = day_key_of(the_day)
-    with closing(db()) as conn:
-        cur = conn.execute("""
-        SELECT user_id, count FROM message_counts
-        WHERE guild_id=? AND day_key=?
-        ORDER BY count DESC
-        LIMIT 1
-        """, (guild_id, key))
-        row = cur.fetchone()
-        if row:
-            return row["user_id"], row["count"]
-    return None, 0
+# ===================== DAILY RESET =====================
 
-def meta_get(guild_id: int, key: str) -> str | None:
-    with closing(db()) as conn:
-        cur = conn.execute("SELECT value FROM meta WHERE guild_id=? AND key=?", (guild_id, key))
-        row = cur.fetchone()
-        return row["value"] if row else None
+@tasks.loop(minutes=1)
+async def clear_leaderboard_daily():
+    """Clear leaderboard exactly at 12:00 AM US/Eastern every day."""
+    now = dt.datetime.now(US_TZ)
+    if now.hour == 0 and now.minute == 0:
+        with closing(db()) as conn, conn:
+            conn.execute("DELETE FROM message_counts")
+        channel = bot.get_channel(1369502239156207619)
+        if channel:
+            await channel.send("Leaderboard cleared neyehehe (auto)")
+        print(f"[RESET] Leaderboard cleared at {now.isoformat()}")
 
-def meta_set(guild_id: int, key: str, value: str | None):
-    with closing(db()) as conn, conn:
-        if value is None:
-            conn.execute("DELETE FROM meta WHERE guild_id=? AND key=?", (guild_id, key))
-        else:
-            conn.execute("""
-            INSERT INTO meta(guild_id, key, value) VALUES(?, ?, ?)
-            ON CONFLICT(guild_id, key) DO UPDATE SET value=excluded.value
-            """, (guild_id, key, value))
-
+@clear_leaderboard_daily.before_loop
+async def _wait_for_ready():
+    await bot.wait_until_ready()
 #Helper (ignore)
 
 async def get_member_safe(guild: discord.Guild, user_id: int) -> discord.Member | None:
@@ -209,7 +156,7 @@ async def on_message(message: discord.Message):
         return
     record_message(message.author.id, message.guild.id)
 
-# TOP CHATTER THING AHAHHA
+# TOP CHATTER THING
     if MVP_ROLE_ID:
         mvp_role = message.guild.get_role(MVP_ROLE_ID)
         if not mvp_role:
@@ -275,7 +222,7 @@ async def on_member_remove(member: discord.Member):
         print("Couldn't DM the user (forbidden).")
     channel = member.guild.get_channel(GOODBYE_CHANNEL_ID)
     if channel:
-        await channel.send(random.choice(CHLmg).format(mention=member.name,user=member.mention)+"https://tenor.com/view/testicular-torsion-testicular-torsion-wizard-gif-5105296058999506050")
+        await channel.send(random.choice(CHLmg).format(mention=member.name,user=member.mention)+"[.](https://tenor.com/view/testicular-torsion-testicular-torsion-wizard-gif-5105296058999506050)")
 
 #tag detection thing (VERYYY IMPRTANT RAHH THIS IS ONE OF THE FEW SECTIONS I DIDNT STEAL FROM REDDIT)
 
