@@ -133,9 +133,13 @@ async def on_ready():
         print("Slash sync error:", e)
 
     print(f"✅ Logged in as {bot.user} (id={bot.user.id})")
-    if not clear_leaderboard_daily.is_running():  # <— add
-        clear_leaderboard_daily.start()  # <— add
-    await announce_leaderboard()
+    if not clear_leaderboard_daily.is_running():
+        clear_leaderboard_daily.start()
+
+    # Post immediately once at startup
+    await _post_hourly_once()
+
+    # Then start the hourly loop
     if not announce_leaderboard.is_running():
         announce_leaderboard.start()
 
@@ -370,7 +374,6 @@ msg2= [
     "<a:doggif:1423159974384762951>",
     "Something wicked this way comes",
     "Arrakis teaches the attitude of the knife - chopping off what's incomplete and saying: 'Now, it's complete because it's ended here",
-    "There will be times when struggle seems impossible. I know this already. Alone, unsure, dwarfed by the scale of the enemy. Remember this: freedom is a pure idea. It occurs spontaneously and without instruction. Random acts of insurrection are occurring constantly throughout the galaxy. There are whole armies, battalions that have no idea that they’ve already enlisted in the cause. Remember that the frontier of the Rebellion is everywhere. And even the smallest act of insurrection pushes our lines forward. And remember this: the imperial need for control is so desperate because it is so unnatural. Tyranny requires constant effort. It breaks, it leaks. Authority is brittle. Oppression is the mask of fear. Remember that. And know this: the day will come when all of these skirmishes and battles, these moments of defiance will have flooded the banks of the Empire’s authority and then there will be one too many. One single thing will break the siege. Remember this: Try",
     "I burn my decency for someone else's future. I burn my life to make a sunrise that I know I'll never see. And the ego that started this fight will never have a mirror or an audience or the light of gratitude.\n\n So what do I sacrifice?\n\n\n Everything!",
     "Welcome to the rebellion",
     "Maybe this time you'll learn *proceeds to rip a train vertically asunder using his son's body*",
@@ -434,10 +437,10 @@ async def daily_cmd(interaction: discord.Interaction):
 
 
 # HOURLY (AUTO im so smartt ghehehe)
-import asyncio  # you already have this
+# HOURLY (AUTO)
+ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
-# --- 1) factor the body into a helper
-async def announce_leaderboard():
+async def _post_hourly_once():
     for guild in bot.guilds:
         try:
             now = dt.datetime.now(US_TZ)
@@ -447,7 +450,6 @@ async def announce_leaderboard():
 
             rows = get_leaderboard_for_day(guild.id, today, limit=20)
             if not rows:
-                print(f"[hourly] {guild.name} ({guild.id}): no rows, skipping")
                 continue
 
             lines = []
@@ -470,20 +472,13 @@ async def announce_leaderboard():
             )
             if channel and channel.permissions_for(guild.me).send_messages:
                 await channel.send(embed=embed)
-                print(f"[hourly] posted in {guild.name} #{channel.name}")
-            else:
-                print(f"[hourly] {guild.name}: no sendable channel found")
         except Exception as e:
             print(f"[hourly] Failed to announce in {guild.id}: {type(e).__name__}: {e}")
 
-
-# --- 2) run hourly loop (no special alignment)
 @tasks.loop(hours=1, reconnect=True)
 async def announce_leaderboard():
-    await announce_leaderboard()
+    await _post_hourly_once()
 
-
-# --- 3) just wait for ready (no top-of-hour alignment)
 @announce_leaderboard.before_loop
 async def _wait_for_ready_hourly():
     await bot.wait_until_ready()
