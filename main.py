@@ -216,7 +216,9 @@ async def on_message(message: discord.Message):
 
 Lmsg=[
     "Howdy {mention}, we're sorry to see you go. Hope you enjoyed your stay in the balls guild. (i mean i cant blame you if you didnt- bUT WHOOPS THATS- YOU DIDNT HEAR THAT...YOU DIDNT HEAR THAT. BYE BYE ",
-    "Bye...thanks for joining the server {mention}! Hope you liked it here :). Well if you didnt, i dont blame you. WAIT NO, i do blame you, fuck. Almost slipped up there BYE. "
+    "Bye...thanks for joining the server {mention}! Hope you liked it here :). Well if you didnt, i dont blame you. WAIT NO, i do blame you, fuck. Almost slipped up there BYE. ",
+    "Why'd you leave? :(( Was the degeneracy that bad??? Listen i get that you found this server either creepy, unhinged or corny but you have to understand that with every person that drops out, the more they torture their 'servants'. Youre going to live with this fact now <:NOBALLS:1374428047205339186> ",
+    'Shi was corny af am i right? I MEAN, NOPE. SORRY, I WAS NOT SUPPOSED TO- BYE..BYE THANKS FOR JOINING BY-BYE AAHHHH *scraping noises*'
 ]
 CHLmg=[
     "Bye bye **{mention}**({user})! (they left the server) That was for courtesy...Your absence affects us not, DESERTER!",
@@ -243,34 +245,34 @@ async def on_member_remove(member: discord.Member):
 EQUIP_MESSAGES = [
     "{mention} just equipped <:balls:1370161168622162121> as their profile tag! PRAISE THE BALLLS!!!",
     "{mention} equipped <:balls:1370161168622162121> as their server tag :D. This is the way.",
-    "All hail {mention} for bearing our sacred <:balls:1370161168622162121> tag. May your L's be few and your W's many.",
+    "All hail {mention} for bearing our sacred <:balls:1370161168622162121> tag. May your L's be few and your bitches's many.<:Spooky:1374429245153087549> ",
     "Ey {mention}, thanks for equipping our tag >:)",
     "Welcome to the faith, {mention}! (ty for equipping our tag)",
     "THANKS FOR USING <:balls:1370161168622162121> AS YOUR PROFILE TAG, {mention}!",
     "{mention} just equipped <:balls:1370161168622162121> as their profile tag. (+based +cool)",
     "{mention} just equipped <:balls:1370161168622162121> as their profile tag. HEHEHEHAW",
     "Heads up, {mention} just equipped <:balls:1370161168622162121> as their profile tag! Welcome to the cul- i mean club {mention} :) (you didnt see shit by the way)",
-    "Thank you, {mention} for WEAR(:wear:)ing our server's tag in your profile.",
+    "Thank you, {mention} for WEAR(:wear:)ing our server's tag on your profile.",
     "{mention} just grew a new pair of <:balls:1370161168622162121>!. You can too by the way by checking https://discord.com/channels/1369502239156207616/1369713659785379840 out.",
     "{mention} {mention} {mention}!!!!! THANK YOU  FOR EQUIPPING OUR TAG!!!!!",
     "Welcome to the cul- i mean club, {mention}! Thank you for equipping our tagg",
     "EVERYONE WELCOME {mention} TO THE FAITH! Thank you for equipping our tag :)",
     "Thank you for equipping our tag, {mention} <:freak:1409627658655895664> ",
-    "TY FOR EQUIPPING OUR TAG <:Freak:1419474509290799186><:Freak:1419474509290799186><:Freak:1419474509290799186> {mention}!!!1!"
+    "TY FOR EQUIPPING OUR TAG <a:doggif:1423159974384762951><a:doggif:1423159974384762951><a:doggif:1423159974384762951> {mention}!!!1!"
 ]
 
 REMOVE_MESSAGES = [
     "{mention} removed their <:balls:1370161168622162121> tag. THE COURT DECLARES HERESY...SEND THEM TO THE fucking DEPTHS",
-    "{mention} chopped off their <:balls:1370161168622162121> (removed their tag 🤮), shame at will.",
+    "{mention} chopped off their <:balls:1370161168622162121> (removed their tag 🤮), shame at will<:NOBALLS:1374428047205339186> .",
     "{mention} has lost their <:balls:1370161168622162121>… how embarrassing.",
-    "{mention} wasn't brave enough and removed their tag <:Revoked:1374428028607795220>. Shame away!",
-    "SORRY FOR INTERRUPTING YOUR CONVERSATION BUT I JUST WANT TO CALL OUT {mention} FOR REMOVING THEIR <:balls:1370161168622162121>. a coward's move...and disgraceful",
+    "{mention} wasn't brave enough and removed their tag <:Revoked:1374428028607795220>. prepare the stick",
+    "SORRY FOR INTERRUPTING YOUR CONVERSATION BUT I JUST WANT TO CALL OUT {mention} FOR REMOVING THEIR <:balls:1370161168622162121>. a coward's move...and disgraceful<:Revoked:1374428028607795220> ",
     "{mention} WHY DID YOU REMOVE? WHY DID YOU REMOVE THE TAG? *kicks and screams*",
     "{mention} just castrated themselves (removed their <:balls:1370161168622162121> tag. Yucky)",
     "ATTENTION! NOTICE! VERY IMPORTANT! {mention} over here just chopped off their <:balls:1370161168622162121>. Prepare the tickle chamber.",
     "Once, {mention} banished Dark, and all that stemmed from their conscience by equipping a certain tag (<:balls:1370161168622162121>). And their conscience assumed a fleeting form. These are the roots of our world. Despite it all, no matter how tender, how exquisite... A lie will remain a lie!...PUT THE TAG BACK ON, {mention} ",
     "{mention}, grow a pair of balls you coward. (Removed Tag)",
-    "{mention} left the faith...(Unequipped their tag). The cul- i mean club will not miss them.",
+    "{mention} left the faith...(Unequipped their tag). The cul- i mean club will not miss them<:noballs:1371881387027861656> .",
     "PLEASE....{mention} PLEASE PUT...\n"
     "PLEASE PUT THE TAG BACK ON, PLEASE...PLEASE. PLEAAASE.\n "
     "WE'RE SORRY...\n"
@@ -279,7 +281,7 @@ REMOVE_MESSAGES = [
     "I SAID WE'RE SORRY.\n"
     "..."
     "put the *fucking* tag back on, {mention}... \n",
-    "{mention} removed their <:balls:1370161168622162121>. (changed their primary tag). BURN THEM! ",
+    "{mention} removed their <:balls:1370161168622162121>. (changed their primary tag). BURN THEM<:Revoked:1374428028607795220> ! ",
     "<:testicular_torsion:1373719974513741974> {mention} JUST UNEQUIPPED THEIR TAG"
 
 ]
@@ -325,29 +327,29 @@ msg2= [
     "Fun fact: idk",
     "I exist. ' In thousands of agonies - I exist. I'm tormented on the rack — but I exist! I see the sun, and if I don't see the sun, I know it's there. And there's a whole life in that, in knowing that the sun is there.\" -Fyodor Doetsvetsky",
     "Man searches constantly for identity, he thought as he trotted along the gravel path. He has no real proof of this existence except for the reaction of other people to that fact.",
-    "In his house at R'lyeh, dead Cthulu waits dreaming",
+    "In his house at R'lyeh, dead Cthulu waits dreaming...of <:balls:1370161168622162121>",
     "Kinglayer was here >:)",
     "Took me a while to get a hang of ts but its smooth now! (mostly)",
-    "HI!",
+    "One tag to rule them all (<:balls:1370161168622162121>), one tag to find them (<:balls:1370161168622162121>) one tag to bring them all (<:balls:1370161168622162121>) and in the darkness, cuck them",
     "Dont learn a thing from conflict, till it finds us once again",
     "Listen to starset, theyre so fucking goated AHHH",
     "I hate this bot",
     "kinglayer DOES NOT like rabbits, banish the insolent wretch that told you that",
-    "Balls staff member try not to be a fucking DEGENERATE challenge (IMPOSSIBLE)",
-    "Hello Hello",
-    "Let me not then die ingloriously and without a struggle, but let me first do some great thing that shall be told among men hereafter.",
+    "<:balls:1370161168622162121> staff member try not to be a fucking DEGENERATE challenge (IMPOSSIBLE)",
+    "G'day ballers",
+    "Let me not then die ingloriously and without a struggle, but let me first do some great thing that shall be told among <:balls:1370161168622162121> hereafter.",
     "COME HOME AND TAKE ME OUTSIIIIDE!",
-    "If sack and sugar be a fault, God help the wicked!",
-    "He who is not contented with what he has, would not be contented with what he would like to have.",
+    "If <:balls:1370161168622162121> and sugar be a fault, God help the wicked!",
+    "He who is not contented with what he has, would not be contented with what he would like to have (<:balls:1370161168622162121>).",
     "Winter is coming.",
     "eeee",
     "this bot is a tribute to the staff members that REFUSED MY MOD APPL*CATION NOT ONCE, NOT TWICE BUT THRICE",
     "OooOOOOOOoooOH im in love with juda-a-as juda-a-as",
     "w speed",
-    "Beware of the blud who speaks in MUSTARD (67676767676767)",
+    "Beware of the <:balls:1370161168622162121> who speaks in MUSTARD (67676767676767)",
     "Equip the official tag! NOW",
     "Counting messages only in main chat",
-    "Obama have a dih baraparapaaa",
+    "I am in a cage, in search of some <:balls:1370161168622162121> - Franz Kafka ",
     "Its DOUGHnut, not DOnut you uncultured louts <:britishbruhcat:1052667689044283413> ",
     "If your name is up here you genuinely need to reconsider some stuff in your life.",
     "*dramatic music*",
@@ -366,7 +368,7 @@ msg2= [
     "In my restless dreams i see that place, silent hill",
     "When im in a try not to be a degenerate challenge and my opponent is a balls guild staff member:",
     "Now playing: Aria Math, by c418",
-    "diamonds!",
+    "<:balls:1370161168622162121> supremacy",
     "'clanker' in the big 25 🥀",
     "Discord.py supremacy gng",
     "To Have Done The Things I Have Done In the Name Of Progress And Healing. It Was Madness",
@@ -383,7 +385,12 @@ msg2= [
     "Think, Mark! You'll outlast every fragile, insignificant being on this planet. You'll live to see this world crumble to dust and blow away! Everyone and everything you know will be gone!",
     "CEECILLL! I NEED YOU CECIIIL!",
     "youre all fucking welcome *bri'ish yap*",
-    "I don't make mistakes, I'm not just like the rest of you. I'm stronger, I'm smarter, I- I'm better! I AM BETTER!!"
+    "I don't make mistakes, I'm not just like the rest of you. I'm stronger, I'm smarter, I- I'm better! I AM BETTER!!",
+    "<:balls:1370161168622162121>",
+    "<:avocado:1371645911968780288> *ngh*",
+    "Prepare yourselves",
+    "<:Bento:1374428015500726302> ",
+    "<:head:1373755448410243072> ",
 
 
 ]
