@@ -37,25 +37,41 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 #Logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("balls-bot")
-
 class BallsBot(commands.Bot):
     async def setup_hook(self):
-        # start long-running loops here (more robust than on_ready)
+        # start long-running loops here (robust across restarts)
         if not clear_leaderboard_daily.is_running():
             clear_leaderboard_daily.start()
             log.info("clear_leaderboard_daily started")
-        if not announce_leaderboard.is_running():
-            announce_leaderboard.start()
+        if not announce_leaderboard1.is_running():
+            announce_leaderboard1.start()
             log.info("announce_leaderboard started")
 
     async def on_ready(self):
-        log.info(f"✅ Logged in as {self.user} (id={self.user.id})")
-        # OPTIONAL: post once right away so you don’t wait an hour
+        # your original startup actions
+        ensure_db()
+        self.add_view(MenuView())
+
+        channel = self.get_channel(ANNOUNCE_CHANNEL_ID)
+        if channel:
+            await channel.send("*whirring noises*..WE BACK ONLINE BABYYY (new update)")
+
         try:
-            await post_hourly_once()
+            g = discord.Object(id=MY_GUILD_ID)
+            synced = await self.tree.sync(guild=g)
+            print(f"✅ Synced {len(synced)} commands to guild {MY_GUILD_ID}")
+            await self.tree.sync()
+            print("🌍 Global sync requested (may take up to 1 hour).")
+        except Exception as e:
+            print("Slash sync error:", e)
+
+        log.info(f"✅ Logged in as {self.user} (id={self.user.id})")
+
+        # fire hourly once on boot so you don't wait
+        try:
+            await post_hourly_once1()
         except Exception as e:
             log.exception(f"initial hourly post failed: {e}")
-
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -136,49 +152,6 @@ async def get_member_safe(guild: discord.Guild, user_id: int) -> discord.Member 
         return await guild.fetch_member(user_id)
     except (discord.NotFound, discord.Forbidden):
         return None
-
-
-#Sync=
-class BallsBot(commands.Bot):
-    async def setup_hook(self):
-        if not clear_leaderboard_daily.is_running():
-            clear_leaderboard_daily.start()
-            log.info("clear_leaderboard_daily started")
-        if not announce_leaderboard.is_running():
-            announce_leaderboard.start()
-            log.info("announce_leaderboard started")
-
-    async def on_ready(self):
-        # your original startup actions
-        ensure_db()
-        self.add_view(MenuView())
-
-        channel = self.get_channel(ANNOUNCE_CHANNEL_ID)
-        if channel:
-            await channel.send("*whirring noises*..WE BACK ONLINE BABYYY (new update)")
-
-        try:
-            g = discord.Object(id=MY_GUILD_ID)
-            synced = await self.tree.sync(guild=g)
-            print(f"✅ Synced {len(synced)} commands to guild {MY_GUILD_ID}")
-            await self.tree.sync()
-            print("🌍 Global sync requested (may take up to 1 hour).")
-        except Exception as e:
-            print("Slash sync error:", e)
-
-        log.info(f"✅ Logged in as {self.user} (id={self.user.id})")
-
-        # fire hourly once on boot so you don't wait
-        try:
-            await post_hourly_once()
-        except Exception as e:
-            log.exception(f"initial hourly post failed: {e}")
-
-        # make sure loops are running
-        if not clear_leaderboard_daily.is_running():
-            clear_leaderboard_daily.start()
-        if not announce_leaderboard.is_running():
-            announce_leaderboard.start()
 
 msg3=[ #{mvp} {winner}
     "Congratulations to the new bearer of {mvp}, {winner}!. We are *soo* proud of you! Now log off and go take a fucking shower you moron.",
@@ -424,7 +397,7 @@ msg2= [
     "Prepare yourselves",
     "<:Bento:1374428015500726302> ",
     "<:head:1373755448410243072> ",
-
+    "In a coat of gold or a coat of red, the lion still has <:balls:1370161168622162121>. \n mine are large, and bold my lord. As large and bold as yours "
 
 ]
 
@@ -484,7 +457,7 @@ ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
 
 @tasks.loop(hours=1, reconnect=True)
-async def announce_leaderboard():
+async def announce_leaderboard1():
     now = dt.datetime.now(US_TZ)
     today = now.date()
     tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -503,11 +476,12 @@ async def announce_leaderboard():
                 lines.append(f"**{i}.** {name} — {cnt}")
 
             embed = discord.Embed(
-                title=f"The hall of shame: (aka hourly update for today's 'messages' leaderboard) (Resets in <t:{unix_reset}:R>)",
+                title=f"~THE HALL OF SHAME~(Resets in <t:{unix_reset}:R>): \n(-# aka hourly update for today's 'messages' leaderboard)",
                 description="\n".join(lines),
                 color=discord.Color.green()
             )
-            embed.set_footer(text=random.choice(msg2))
+            embed.set_footer(️text='🎗️'+random.choice(msg2)+'🎗')
+
 
             channel = (
                 guild.get_channel(ANNOUNCE_CHANNEL_ID)
@@ -522,11 +496,11 @@ async def announce_leaderboard():
         except Exception as e:
             log.exception(f"[hourly] Failed in {guild.id}: {e}")
 
-@announce_leaderboard.before_loop
-async def _wait_hourly_ready():
+@announce_leaderboard1.before_loop
+async def _wait_hourly_ready1():
     await bot.wait_until_ready()
 
-async def post_hourly_once():
+async def post_hourly_once1():
     """Optional: run the same logic once on startup."""
     now = dt.datetime.now(US_TZ)
     today = now.date()
