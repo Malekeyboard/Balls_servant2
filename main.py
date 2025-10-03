@@ -480,7 +480,7 @@ async def announce_leaderboard1():
                 description="\n".join(lines),
                 color=discord.Color.green()
             )
-            embed.set_footer(️text='🎗️'+random.choice(msg2)+'🎗')
+            embed.set_footer(text='🎗️ ' + random.choice(msg2) + ' 🎗️')
 
 
             channel = (
