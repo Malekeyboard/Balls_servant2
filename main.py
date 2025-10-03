@@ -166,7 +166,11 @@ async def on_message(message: discord.Message):
         elif not message.guild.me.guild_permissions.manage_roles:
             print("⚠️ Missing Manage Roles permission!")
         else:
-            top = get_leaderboard_for_day(message.guild.id, dt.date.today(), limit=1)
+            top = get_leaderboard_for_day(
+                message.guild.id,
+                dt.datetime.now(US_TZ).date(),  # ← was dt.date.today()
+                limit=1
+            )
             if top:
                 winner_id, _ = top[0]
 
@@ -406,7 +410,7 @@ def build_daily_table(guild: discord.Guild) -> str | None:
         name = (name[:21] + "...") if len(name) > 24 else name
         lines.append(f"{i:<6}{name:<25}{cnt:>10}")
 
-    table = "```\n" + "\n".join(lines) + "\n```"
+    table = f"Resets in <t:{unix_reset}:R>\n" + "```\n" + "\n".join(lines) + "\n```"
 
     ch = guild.get_channel(TRACK_CHANNEL_ID)
     if ch:
@@ -429,13 +433,15 @@ async def daily_cmd(interaction: discord.Interaction):
 
 
 # HOURLY (AUTO im so smartt ghehehe)
-ANNOUNCE_CHANNEL_ID = 1369502239156207619
+import asyncio
 
+ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
 @tasks.loop(hours=1)
 async def announce_leaderboard():
     for guild in bot.guilds:
         try:
+            # compute "today" and the next midnight (US/Eastern) every hour
             now = dt.datetime.now(US_TZ)
             today = now.date()
             tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -443,6 +449,7 @@ async def announce_leaderboard():
 
             rows = get_leaderboard_for_day(guild.id, today, limit=20)
             if not rows:
+                print(f"[hourly] {guild.name} ({guild.id}): no rows, skipping")
                 continue
 
             lines = []
@@ -465,13 +472,23 @@ async def announce_leaderboard():
             )
             if channel and channel.permissions_for(guild.me).send_messages:
                 await channel.send(embed=embed)
+                print(f"[hourly] posted in {guild.name} #{channel.name}")
+            else:
+                print(f"[hourly] {guild.name}: no sendable channel found")
         except Exception as e:
             print(f"[hourly] Failed to announce in {guild.id}: {type(e).__name__}: {e}")
 
 @announce_leaderboard.before_loop
-async def _wait_for_ready():
+async def _wait_for_ready_hourly():
+    # ensure bot is ready
     await bot.wait_until_ready()
-
+    # align to the top of the hour in US/Eastern
+    while not bot.is_closed():
+        now = dt.datetime.now(US_TZ)
+        if now.minute == 0 and now.second == 0:
+            break
+        # sleep until the next check (every second so we hit exact :00 cleanly)
+        await asyncio.sleep(1)
 # Tag Totaller 4000 first of its name blablabla (im proud of ts)
 
 async def tagged_count(interaction: discord.Interaction): #helper, ignore if you want
