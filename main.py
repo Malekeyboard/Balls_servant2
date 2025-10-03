@@ -43,8 +43,8 @@ class BallsBot(commands.Bot):
         if not clear_leaderboard_daily.is_running():
             clear_leaderboard_daily.start()
             log.info("clear_leaderboard_daily started")
-        if not announce_leaderboard1.is_running():
-            announce_leaderboard1.start()
+        if not announce_leaderboard2.is_running():
+            announce_leaderboard2.start()
             log.info("announce_leaderboard started")
 
     async def on_ready(self):
@@ -69,7 +69,7 @@ class BallsBot(commands.Bot):
 
         # fire hourly once on boot so you don't wait
         try:
-            await post_hourly_once1()
+            await announce_leaderboard2()
         except Exception as e:
             log.exception(f"initial hourly post failed: {e}")
 
@@ -457,7 +457,7 @@ ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
 
 @tasks.loop(hours=1, reconnect=True)
-async def announce_leaderboard1():
+async def announce_leaderboard2():
     now = dt.datetime.now(US_TZ)
     today = now.date()
     tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -496,43 +496,9 @@ async def announce_leaderboard1():
         except Exception as e:
             log.exception(f"[hourly] Failed in {guild.id}: {e}")
 
-@announce_leaderboard1.before_loop
-async def _wait_hourly_ready1():
+@announce_leaderboard2.before_loop
+async def _wait_hourly_ready2():
     await bot.wait_until_ready()
-
-async def post_hourly_once1():
-    """Optional: run the same logic once on startup."""
-    now = dt.datetime.now(US_TZ)
-    today = now.date()
-    tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    unix_reset = int(tomorrow.timestamp())
-
-    for guild in bot.guilds:
-        rows = get_leaderboard_for_day(guild.id, today, limit=20)
-        if not rows:
-            continue
-
-        lines = []
-        for i, (uid, cnt) in enumerate(rows, 1):
-            member = guild.get_member(uid)
-            name = member.mention if member else f"<@{uid}>"
-            lines.append(f"**{i}.** {name} — {cnt}")
-
-        embed = discord.Embed(
-            title=f"The hall of shame: (aka hourly update for today's 'messages' leaderboard) (Resets in <t:{unix_reset}:R>)",
-            description="\n".join(lines),
-            color=discord.Color.green()
-        )
-        embed.set_footer(text=random.choice(msg2))
-
-        channel = (
-            guild.get_channel(ANNOUNCE_CHANNEL_ID)
-            or guild.system_channel
-            or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
-        )
-        if channel and channel.permissions_for(guild.me).send_messages:
-            await channel.send(embed=embed)
-            log.info(f"[boot] posted in {guild.name} #{channel.name}")
 
 # Tag Totaller 4000 first of its name blablabla (im proud of ts)
 
