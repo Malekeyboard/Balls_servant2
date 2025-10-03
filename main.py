@@ -22,7 +22,7 @@ DAILY_CROWN_HOUR = 0
 DAILY_CROWN_MINUTE = 5
 
 MY_GUILD_ID = 1369502239156207616
-TAG_ANNOUNCE_CHANNEL_ID = 1369502239156207619
+ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
 OFFICIAL_TAG = "balls"  # for /tagged_count
 
@@ -135,6 +135,7 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user} (id={bot.user.id})")
     if not clear_leaderboard_daily.is_running():  # <— add
         clear_leaderboard_daily.start()  # <— add
+    await announce_leaderboard()
     if not announce_leaderboard.is_running():
         announce_leaderboard.start()
 
@@ -291,7 +292,7 @@ async def on_user_update(before: discord.User, after: discord.User):
         return
 
     channel = (
-        guild.get_channel(TAG_ANNOUNCE_CHANNEL_ID)
+        guild.get_channel(ANNOUNCE_CHANNEL_ID)
         or guild.system_channel
         or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
     )
@@ -394,7 +395,7 @@ def build_daily_table(guild: discord.Guild) -> str | None:
     unix_reset = int(tomorrow.timestamp())
     if not rows:
         return None
-    header = f"{'Rank':<6}{'User':<25}{'Messages':>10}            (Resets in <t:{unix_reset}:R>)"
+    header = f"{'Rank':<6}{'User':<25}{'Messages':>10}"
     sep = "-" * len(header)
     lines = [header, sep]
 
@@ -410,11 +411,11 @@ def build_daily_table(guild: discord.Guild) -> str | None:
         name = (name[:21] + "...") if len(name) > 24 else name
         lines.append(f"{i:<6}{name:<25}{cnt:>10}")
 
-    table = f"Resets in <t:{unix_reset}:R>\n" + "```\n" + "\n".join(lines) + "\n```"
+    table = f"```\n" + "\n".join(lines) + "\n```"
 
     ch = guild.get_channel(TRACK_CHANNEL_ID)
     if ch:
-        table += random.choice(msg2)
+        table += random.choice(msg2)+f"(resets in <t:{unix_reset}:R>)"
 
     return table
 
@@ -433,15 +434,12 @@ async def daily_cmd(interaction: discord.Interaction):
 
 
 # HOURLY (AUTO im so smartt ghehehe)
-import asyncio
+import asyncio  # you already have this
 
-ANNOUNCE_CHANNEL_ID = 1369502239156207619
-
-@tasks.loop(hours=1)
+# --- 1) factor the body into a helper
 async def announce_leaderboard():
     for guild in bot.guilds:
         try:
-            # compute "today" and the next midnight (US/Eastern) every hour
             now = dt.datetime.now(US_TZ)
             today = now.date()
             tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -478,17 +476,17 @@ async def announce_leaderboard():
         except Exception as e:
             print(f"[hourly] Failed to announce in {guild.id}: {type(e).__name__}: {e}")
 
+
+# --- 2) run hourly loop (no special alignment)
+@tasks.loop(hours=1, reconnect=True)
+async def announce_leaderboard():
+    await announce_leaderboard()
+
+
+# --- 3) just wait for ready (no top-of-hour alignment)
 @announce_leaderboard.before_loop
 async def _wait_for_ready_hourly():
-    # ensure bot is ready
     await bot.wait_until_ready()
-    # align to the top of the hour in US/Eastern
-    while not bot.is_closed():
-        now = dt.datetime.now(US_TZ)
-        if now.minute == 0 and now.second == 0:
-            break
-        # sleep until the next check (every second so we hit exact :00 cleanly)
-        await asyncio.sleep(1)
 # Tag Totaller 4000 first of its name blablabla (im proud of ts)
 
 async def tagged_count(interaction: discord.Interaction): #helper, ignore if you want
