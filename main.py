@@ -16,7 +16,7 @@ from discord import app_commands
 LEADERBOARD_LIMIT = 20
 TRACK_CHANNEL_ID = 1369502239156207619
 MVP_ROLE_ID=1419902849130954874
-_US_EASTERN = pytz.timezone("US/Eastern")
+
 
 DAILY_CROWN_HOUR = 0
 DAILY_CROWN_MINUTE = 5
@@ -27,6 +27,7 @@ TAG_ANNOUNCE_CHANNEL_ID = 1369502239156207619
 OFFICIAL_TAG = "balls"  # for /tagged_count
 
 _current_leader: dict[int, int] = {}
+US_TZ = pytz.timezone("US/Eastern")
 # ================================================== EEE
 
 load_dotenv()
@@ -132,7 +133,8 @@ async def on_ready():
         print("Slash sync error:", e)
 
     print(f"✅ Logged in as {bot.user} (id={bot.user.id})")
-
+    if not clear_leaderboard_daily.is_running():  # <— add
+        clear_leaderboard_daily.start()  # <— add
     if not announce_leaderboard.is_running():
         announce_leaderboard.start()
 
@@ -374,19 +376,21 @@ msg2= [
 
 
 ]
-US_TZ = pytz.timezone("US/Eastern")
+
 now = dt.datetime.now(US_TZ)
 tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
 unix_reset = int(tomorrow.timestamp())
 
 #(HELPER)
 def build_daily_table(guild: discord.Guild) -> str | None:
-    rows = get_leaderboard_for_day(guild.id, dt.date.today())
+    today = dt.datetime.now(US_TZ).date()
+    rows = get_leaderboard_for_day(guild.id, today)
+    now = dt.datetime.now(US_TZ)
+    tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    unix_reset = int(tomorrow.timestamp())
     if not rows:
         return None
-
-
-    header = f"{'Rank':<6}{'User':<25}{'Messages':>10}"
+    header = f"{'Rank':<6}{'User':<25}{'Messages':>10}            (Resets in <t:{unix_reset}:R>)"
     sep = "-" * len(header)
     lines = [header, sep]
 
@@ -430,9 +434,14 @@ ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
 @tasks.loop(hours=1)
 async def announce_leaderboard():
-    try:
-        for guild in bot.guilds:
-            rows = get_leaderboard_for_day(guild.id, dt.date.today(), limit=20)
+    for guild in bot.guilds:
+        try:
+            now = dt.datetime.now(US_TZ)
+            today = now.date()
+            tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+            unix_reset = int(tomorrow.timestamp())
+
+            rows = get_leaderboard_for_day(guild.id, today, limit=20)
             if not rows:
                 continue
 
@@ -454,11 +463,10 @@ async def announce_leaderboard():
                 or guild.system_channel
                 or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
             )
-            if channel:
+            if channel and channel.permissions_for(guild.me).send_messages:
                 await channel.send(embed=embed)
-    except Exception as e:
-       print(f"[hourly] Failed to announce in {guild.id}: {type(e).__name__}: {e}")
-
+        except Exception as e:
+            print(f"[hourly] Failed to announce in {guild.id}: {type(e).__name__}: {e}")
 
 @announce_leaderboard.before_loop
 async def _wait_for_ready():
@@ -492,22 +500,23 @@ async def tagged_count_cmd(interaction: discord.Interaction):
 
 #Fuck the leaderboard!
 @bot.tree.command(name="clear_leaderboardd", description="(Admin) Clear today's leaderboard for this server!.")
-@discord.app_commands.default_permissions(manage_guild=True)
+@app_commands.default_permissions(manage_guild=True)
 async def clear_leaderboard(interaction: discord.Interaction):
     guild = interaction.guild
     if guild is None:
-        await interaction.response.send_message(" Run this in a server, not in DMs, dipshit", ephemeral=True)
+        await interaction.response.send_message(" Run this in a server, not in DMs, dipshit.", ephemeral=True)
         return
 
-    today = today_key()
+    key_today = today_key()  # ← call the function, store in a DIFFERENT name
     with closing(db()) as conn, conn:
         conn.execute(
             "DELETE FROM message_counts WHERE guild_id=? AND day_key=?",
-            (guild.id, today),
+            (guild.id, key_today),
         )
 
     await interaction.response.send_message(
-        f"BOOM. WHOOOSH. *squelch*. Thats the sound of your *precious* leaderboard crumbling to dust and BLOWING right the fuck up, AHAHAHDWUWE *cough* *cough*", ephemeral=False  # type: ignore
+        "BOOM. WHOOOSH. *squelch*. Thats the sound of your *precious* leaderboard crumbling to dust and BLOWING right the fuck up, AHAHAHDWUWE *cough* *cough*",
+        ephemeral=False
     )
 # BUTTONS...BUTTONS, TECH-TECHNOLOGY BUTTONS..BUTTONS
 from discord import ui
