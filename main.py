@@ -6,6 +6,7 @@ import datetime as dt
 from contextlib import closing
 import random
 import pytz
+import logging
 
 import discord
 from discord.ext import commands, tasks
@@ -33,10 +34,33 @@ US_TZ = pytz.timezone("US/Eastern")
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
+#Logging
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("balls-bot")
+
+class BallsBot(commands.Bot):
+    async def setup_hook(self):
+        # start long-running loops here (more robust than on_ready)
+        if not clear_leaderboard_daily.is_running():
+            clear_leaderboard_daily.start()
+            log.info("clear_leaderboard_daily started")
+        if not announce_leaderboard.is_running():
+            announce_leaderboard.start()
+            log.info("announce_leaderboard started")
+
+    async def on_ready(self):
+        log.info(f"✅ Logged in as {self.user} (id={self.user.id})")
+        # OPTIONAL: post once right away so you don’t wait an hour
+        try:
+            await post_hourly_once()
+        except Exception as e:
+            log.exception(f"initial hourly post failed: {e}")
+
+
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = BallsBot(command_prefix="!", intents=intents)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "discord_daily.db")
 
@@ -115,37 +139,46 @@ async def get_member_safe(guild: discord.Guild, user_id: int) -> discord.Member 
 
 
 #Sync=
-@bot.event
-async def on_ready():
-    ensure_db()
-    bot.add_view(MenuView())
-    channel = bot.get_channel(1369502239156207619)
-    if channel:
-        await channel.send("*whirring noises*..WE BACK ONLINE BABYYY (new update)")
-    try:
-        g = discord.Object(id=MY_GUILD_ID)
-        synced = await bot.tree.sync(guild=g)
-        print(f"✅ Synced {len(synced)} commands to guild {MY_GUILD_ID}")
-        await bot.tree.sync()
-        print("🌍 Global sync requested (may take up to 1 hour).")
+class BallsBot(commands.Bot):
+    async def setup_hook(self):
+        if not clear_leaderboard_daily.is_running():
+            clear_leaderboard_daily.start()
+            log.info("clear_leaderboard_daily started")
+        if not announce_leaderboard.is_running():
+            announce_leaderboard.start()
+            log.info("announce_leaderboard started")
 
-    except Exception as e:
-        print("Slash sync error:", e)
+    async def on_ready(self):
+        # your original startup actions
+        ensure_db()
+        self.add_view(MenuView())
 
-    print(f"✅ Logged in as {bot.user} (id={bot.user.id})")
-    if not clear_leaderboard_daily.is_running():
-        clear_leaderboard_daily.start()
+        channel = self.get_channel(ANNOUNCE_CHANNEL_ID)
+        if channel:
+            await channel.send("*whirring noises*..WE BACK ONLINE BABYYY (new update)")
 
-    # 🔹 post once right now so you see it immediately
-    for guild in bot.guilds:
         try:
-            await _post_hourly_update(guild)
+            g = discord.Object(id=MY_GUILD_ID)
+            synced = await self.tree.sync(guild=g)
+            print(f"✅ Synced {len(synced)} commands to guild {MY_GUILD_ID}")
+            await self.tree.sync()
+            print("🌍 Global sync requested (may take up to 1 hour).")
         except Exception as e:
-            print(f"[startup hourly] Failed in {guild.id}: {type(e).__name__}: {e}")
+            print("Slash sync error:", e)
 
-    # 🔹 then start the hourly loop
-    if not announce_leaderboard.is_running():
-        announce_leaderboard.start()
+        log.info(f"✅ Logged in as {self.user} (id={self.user.id})")
+
+        # fire hourly once on boot so you don't wait
+        try:
+            await post_hourly_once()
+        except Exception as e:
+            log.exception(f"initial hourly post failed: {e}")
+
+        # make sure loops are running
+        if not clear_leaderboard_daily.is_running():
+            clear_leaderboard_daily.start()
+        if not announce_leaderboard.is_running():
+            announce_leaderboard.start()
 
 msg3=[ #{mvp} {winner}
     "Congratulations to the new bearer of {mvp}, {winner}!. We are *soo* proud of you! Now log off and go take a fucking shower you moron.",
@@ -445,56 +478,87 @@ async def daily_cmd(interaction: discord.Interaction):
         return
     await interaction.response.send_message(table)
 
-# HOURLY (AUTO)
-ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
 # --- HOURLY (simple: fire once on boot, then every hour) ---
 ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
-async def _post_hourly_update(guild: discord.Guild):
-    # compute "today" and the next midnight (US/Eastern) each time we post
+
+@tasks.loop(hours=1, reconnect=True)
+async def announce_leaderboard():
     now = dt.datetime.now(US_TZ)
     today = now.date()
     tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     unix_reset = int(tomorrow.timestamp())
 
-    rows = get_leaderboard_for_day(guild.id, today, limit=20)
-    if not rows:
-        # nothing to post for this guild
-        return
-
-    lines = []
-    for i, (uid, cnt) in enumerate(rows, 1):
-        member = guild.get_member(uid)
-        name = member.mention if member else f"<@{uid}>"
-        lines.append(f"**{i}.** {name} — {cnt}")
-
-    embed = discord.Embed(
-        title=f"The hall of shame: (aka hourly update for today's 'messages' leaderboard) (Resets in <t:{unix_reset}:R>)",
-        description="\n".join(lines),
-        color=discord.Color.green()
-    )
-    embed.set_footer(text=random.choice(msg2))
-
-    channel = (
-        guild.get_channel(ANNOUNCE_CHANNEL_ID)
-        or guild.system_channel
-        or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
-    )
-    if channel and channel.permissions_for(guild.me).send_messages:
-        await channel.send(embed=embed)
-
-@tasks.loop(hours=1)
-async def announce_leaderboard():
     for guild in bot.guilds:
         try:
-            await _post_hourly_update(guild)
+            rows = get_leaderboard_for_day(guild.id, today, limit=20)
+            if not rows:
+                continue
+
+            lines = []
+            for i, (uid, cnt) in enumerate(rows, 1):
+                member = guild.get_member(uid)
+                name = member.mention if member else f"<@{uid}>"
+                lines.append(f"**{i}.** {name} — {cnt}")
+
+            embed = discord.Embed(
+                title=f"The hall of shame: (aka hourly update for today's 'messages' leaderboard) (Resets in <t:{unix_reset}:R>)",
+                description="\n".join(lines),
+                color=discord.Color.green()
+            )
+            embed.set_footer(text=random.choice(msg2))
+
+            channel = (
+                guild.get_channel(ANNOUNCE_CHANNEL_ID)
+                or guild.system_channel
+                or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
+            )
+            if channel and channel.permissions_for(guild.me).send_messages:
+                await channel.send(embed=embed)
+                log.info(f"[hourly] posted in {guild.name} #{channel.name}")
+            else:
+                log.warning(f"[hourly] {guild.name}: no sendable channel found")
         except Exception as e:
-            print(f"[hourly] Failed in {guild.id}: {type(e).__name__}: {e}")
+            log.exception(f"[hourly] Failed in {guild.id}: {e}")
 
 @announce_leaderboard.before_loop
-async def _wait_for_ready_hourly():
+async def _wait_hourly_ready():
     await bot.wait_until_ready()
+
+async def post_hourly_once():
+    """Optional: run the same logic once on startup."""
+    now = dt.datetime.now(US_TZ)
+    today = now.date()
+    tomorrow = (now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    unix_reset = int(tomorrow.timestamp())
+
+    for guild in bot.guilds:
+        rows = get_leaderboard_for_day(guild.id, today, limit=20)
+        if not rows:
+            continue
+
+        lines = []
+        for i, (uid, cnt) in enumerate(rows, 1):
+            member = guild.get_member(uid)
+            name = member.mention if member else f"<@{uid}>"
+            lines.append(f"**{i}.** {name} — {cnt}")
+
+        embed = discord.Embed(
+            title=f"The hall of shame: (aka hourly update for today's 'messages' leaderboard) (Resets in <t:{unix_reset}:R>)",
+            description="\n".join(lines),
+            color=discord.Color.green()
+        )
+        embed.set_footer(text=random.choice(msg2))
+
+        channel = (
+            guild.get_channel(ANNOUNCE_CHANNEL_ID)
+            or guild.system_channel
+            or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
+        )
+        if channel and channel.permissions_for(guild.me).send_messages:
+            await channel.send(embed=embed)
+            log.info(f"[boot] posted in {guild.name} #{channel.name}")
 
 # Tag Totaller 4000 first of its name blablabla (im proud of ts)
 
