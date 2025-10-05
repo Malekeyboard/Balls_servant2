@@ -257,7 +257,7 @@ EQUIP_MESSAGES = [
     "THANKS FOR USING <:balls:1370161168622162121> AS YOUR PROFILE TAG, {mention}!",
     "{mention} just equipped <:balls:1370161168622162121> as their profile tag. (+based +cool)",
     "{mention} just equipped <:balls:1370161168622162121> as their profile tag. HEHEHEHAW",
-    "Heads up, {mention} just equipped <:balls:1370161168622162121> as their profile tag! Welcome to the cul- i mean club {mention} :) (you didnt see shit by the way)",
+    "Heads up, {mention} just equipped <:balls:1370161168622162121> as their profile tag! Welcome to the cul- i mean club {mention} :)",
     "Thank you, {mention} for WEAR(:wear:)ing our server's tag on your profile.",
     "{mention} just grew a new pair of <:balls:1370161168622162121>!. You can too by the way by checking https://discord.com/channels/1369502239156207616/1369713659785379840 out.",
     "{mention} {mention} {mention}!!!!! THANK YOU  FOR EQUIPPING OUR TAG!!!!!",
@@ -434,7 +434,7 @@ def build_daily_table(guild: discord.Guild) -> str | None:
 
     ch = guild.get_channel(TRACK_CHANNEL_ID)
     if ch:
-        table += random.choice(msg2)+f"\n\n(resets in <t:{unix_reset}:R>)"
+        table += random.choice(msg2)+f"\n\n(resets <t:{unix_reset}:R>)"
 
     return table
 
@@ -476,12 +476,9 @@ async def announce_leaderboard2():
                 lines.append(f"**{i}.** {name} — {cnt}")
 
             embed = discord.Embed(
-                title=f"~THE HALL OF SHAME~(Resets in <t:{unix_reset}:R>): \n(-# aka hourly update for today's 'messages' leaderboard)",
-                description="\n".join(lines),
-                color=discord.Color.green()
-            )
-            embed.set_footer(text='🎗️ ' + random.choice(msg2) + ' 🎗️')
-
+                title=f"~THE HALL OF SHAME~(Resets <t:{unix_reset}:R>): \n(-# aka hourly update for today's 'messages' leaderboard)",
+                description="\n".join(lines)+"\n\n"+'🎗️ ' + random.choice(msg2) + ' 🎗️',
+                color=discord.Color.green())
 
             channel = (
                 guild.get_channel(ANNOUNCE_CHANNEL_ID)
@@ -586,9 +583,25 @@ async def menu(interaction: discord.Interaction):
         f"I am the 'official' bot made for the balls guild, a delightful little clanker made by a...not so very delightful person (<@742680549789007874> 🐇 *cough* 🐇 *cough*. Though my features are really kind of useless, and volatile to boot.  You're OBLIGATED to respect me cuz my mom owns this server and can get you BANNED >:( >:9 grrr "
         f"thats it for now my dear {interaction.user.mention}. I have naught else to say, check out my commands ig.\n\n# (by the way this is my first ham fisted attempt at trying out those cool discord 'button' things you see on all the popular bots so forgive me if this command is useless af <a:doggif:1423159974384762951>)\n\n"
     )
-    embed.set_footer(text="oh yeah by the way if you encounter any errors/bugs bother the guy with the 'bot master' role.")
+    embed.set_footer(text="ALSO if you encounter any errors/bugs bother the guy with the 'bot master' role.")
 
     await interaction.response.send_message(embed=embed, view=MenuView())
+
+OWNER_ID = 742680549789007874  # <-- put YOUR Discord user ID here
+
+@bot.tree.command(name="start_hourly", description="(Owner) Start the hourly leaderboard announcer.")
+async def start_hourly(interaction: discord.Interaction):
+    # hard gate: only the owner may run
+    if interaction.user.id != OWNER_ID:
+        await interaction.response.send_message("Nope. King only, hands off knave.", ephemeral=True)
+        return
+
+    # start the loop if it's not already running
+    if not announce_leaderboard2.is_running():
+        announce_leaderboard2.start()
+        await interaction.response.send_message("OPEN THE GATES.", ephemeral=True)
+    else:
+        await interaction.response.send_message("cant do.", ephemeral=True)
 
 # THE BOOTING, thank you for reading thru my slop :)
 webserver.keep_alive()
