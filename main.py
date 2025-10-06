@@ -24,7 +24,7 @@ DAILY_CROWN_MINUTE = 5
 MY_GUILD_ID = 1369502239156207616
 ANNOUNCE_CHANNEL_ID = 1369502239156207619
 
-OFFICIAL_TAG = "balls"  # for /tagged_count
+OFFICIAL_TAG = "balls" 
 
 _current_leader: dict[int, int] = {}
 US_TZ = pytz.timezone("US/Eastern")
@@ -47,7 +47,6 @@ class BallsBot(commands.Bot):
             log.info("announce_leaderboard started")
 
     async def on_ready(self):
-        # your original startup actions
         ensure_db()
         self.add_view(MenuView())
 
@@ -65,8 +64,6 @@ class BallsBot(commands.Bot):
             print("Slash sync error:", e)
 
         log.info(f"✅ Logged in as {self.user} (id={self.user.id})")
-
-        # fire hourly once on boot so you don't wait
         try:
             await post_hourly_once()
         except Exception as e:
@@ -123,7 +120,7 @@ def get_leaderboard_for_day(guild_id: int, the_day: dt.date, limit: int = LEADER
         """, (guild_id, key, limit))
         return [(r["user_id"], r["count"]) for r in cur.fetchall()]
 
-# ===================== DAILY RESET =====================
+#REset
 
 @tasks.loop(minutes=1)
 async def clear_leaderboard_daily():
@@ -162,19 +159,16 @@ msg3=[ #{mvp} {winner}
     "{mvp} now belongs to {winner}!!!!! The queen is proud...But your enemies?"
 ]
 
-# Simple cooldown for on_user_update spam
 _last_user_update: dict[int, float] = {}
 
 @bot.event
 async def on_message(message: discord.Message):
-    # Always let commands work, but only count messages in the tracked channel
     if message.author.bot or not message.guild:
         return
 
     if message.channel.id == TRACK_CHANNEL_ID:
         record_message(message.author.id, message.guild.id)
 
-        # TOP CHATTER THING
         if MVP_ROLE_ID:
             mvp_role = message.guild.get_role(MVP_ROLE_ID)
             if not mvp_role:
@@ -220,7 +214,6 @@ async def on_message(message: discord.Message):
                                 except discord.HTTPException:
                                     pass
 
-    # Process commands everywhere
     await bot.process_commands(message)
 
 Lmsg=[
@@ -304,8 +297,6 @@ async def on_user_update(before: discord.User, after: discord.User):
 
     if b_id == a_id:
         return
-
-    # simple per-user cooldown (seconds)
     now_ts = dt.datetime.now().timestamp()
     last = _last_user_update.get(after.id, 0)
     if now_ts - last < 10:
@@ -461,7 +452,7 @@ async def daily_cmd(interaction: discord.Interaction):
         return
     await interaction.response.send_message(table)
 
-# --- HOURLY (simple: fire once on boot, then every hour) ---
+#HOURLY
 
 @tasks.loop(hours=1, reconnect=True)
 async def announce_leaderboard2():
@@ -568,7 +559,7 @@ async def clear_leaderboard(interaction: discord.Interaction):
         await interaction.response.send_message(" Run this in a server, not in DMs, dipshit.", ephemeral=True)
         return
 
-    key_today = today_key()  # ← call the function, store in a DIFFERENT name
+    key_today = today_key() 
     with closing(db()) as conn, conn:
         conn.execute(
             "DELETE FROM message_counts WHERE guild_id=? AND day_key=?",
@@ -584,25 +575,25 @@ from discord import ui
 
 class MenuView(ui.View):
     def __init__(self):
-        super().__init__(timeout=None)  # keep buttons active
+        super().__init__(timeout=None)
 
     @ui.button(label="Daily Leaderboard", style=discord.ButtonStyle.red, custom_id="btn_daily")
     async def btn_daily(self, interaction: discord.Interaction, button: ui.Button):
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message("Run this in a server dumbass", ephemeral=True)  # type: ignore
+            await interaction.response.send_message("Run this in a server dumbass", ephemeral=True) 
             return
 
-        table = build_daily_table(guild)  # uses your existing helper
+        table = build_daily_table(guild)
         if not table:
-            await interaction.response.send_message("No messages today :(", ephemeral=True)  # type: ignore
+            await interaction.response.send_message("No messages today :(", ephemeral=True) 
             return
 
-        await interaction.response.send_message(table, ephemeral=True)  # type: ignore
+        await interaction.response.send_message(table, ephemeral=True)  
 
     @ui.button(label="Tagged Count", style=discord.ButtonStyle.green, custom_id="btn_tagged")
     async def btn_tagged(self, interaction: discord.Interaction, button: ui.Button):
-        await tagged_count(interaction)  # type: ignore
+        await tagged_count(interaction) 
 
 #really based menu hehehehe
 @app_commands.guilds(discord.Object(id=MY_GUILD_ID))
@@ -623,16 +614,15 @@ async def menu(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, view=MenuView())
 
-OWNER_ID = 742680549789007874  # <-- put YOUR Discord user ID here
+OWNER_ID = 742680549789007874 
 
 @bot.tree.command(name="start_hourly", description="(Owner) Start the hourly leaderboard announcer.")
 async def start_hourly(interaction: discord.Interaction):
-    # hard gate: only the owner may run
+
     if interaction.user.id != OWNER_ID:
         await interaction.response.send_message("Nope. King only, hands off knave.", ephemeral=True)
         return
 
-    # start the loop if it's not already running
     if not announce_leaderboard2.is_running():
         announce_leaderboard2.start()
         await interaction.response.send_message("OPEN THE GATES.", ephemeral=True)
