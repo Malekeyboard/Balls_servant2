@@ -18,7 +18,6 @@ LEADERBOARD_LIMIT = 20
 TRACK_CHANNEL_ID = 1369502239156207619
 MVP_ROLE_ID=1419902849130954874
 
-
 DAILY_CROWN_HOUR = 0
 DAILY_CROWN_MINUTE = 5
 
@@ -69,7 +68,7 @@ class BallsBot(commands.Bot):
 
         # fire hourly once on boot so you don't wait
         try:
-            await announce_leaderboard2()
+            await post_hourly_once()
         except Exception as e:
             log.exception(f"initial hourly post failed: {e}")
 
@@ -81,7 +80,6 @@ bot = BallsBot(command_prefix="!", intents=intents)
 DB_PATH = os.path.join(os.path.dirname(__file__), "discord_daily.db")
 
 # DATABASES! (stole this shite from https://docs.python.org/3/library/sqlite3.html and https://www.youtube.com/watch?v=CBCZO-HL2rw)
-
 
 def db():
     conn = sqlite3.connect(DB_PATH)
@@ -142,6 +140,7 @@ async def clear_leaderboard_daily():
 @clear_leaderboard_daily.before_loop
 async def _wait_for_ready():
     await bot.wait_until_ready()
+
 #Helper (ignore)
 
 async def get_member_safe(guild: discord.Guild, user_id: int) -> discord.Member | None:
@@ -162,62 +161,66 @@ msg3=[ #{mvp} {winner}
     "I hereby consecrate {winner} with the mantle of {mvp}. Did i sound cool here? Sorry, i just finished game of thrones",
     "{mvp} now belongs to {winner}!!!!! The queen is proud...But your enemies?"
 ]
+
+# Simple cooldown for on_user_update spam
+_last_user_update: dict[int, float] = {}
+
 @bot.event
 async def on_message(message: discord.Message):
-    if (
-        message.author.bot
-        or not message.guild
-        or message.channel.id != TRACK_CHANNEL_ID
-    ):
+    # Always let commands work, but only count messages in the tracked channel
+    if message.author.bot or not message.guild:
         return
-    record_message(message.author.id, message.guild.id)
 
-# TOP CHATTER THING
-    if MVP_ROLE_ID:
-        mvp_role = message.guild.get_role(MVP_ROLE_ID)
-        if not mvp_role:
-            print("⚠️ MVP role not found in this guild!")
-        elif not message.guild.me.guild_permissions.manage_roles:
-            print("⚠️ Missing Manage Roles permission!")
-        else:
-            top = get_leaderboard_for_day(
-                message.guild.id,
-                dt.datetime.now(US_TZ).date(),  # ← was dt.date.today()
-                limit=1
-            )
-            if top:
-                winner_id, _ = top[0]
+    if message.channel.id == TRACK_CHANNEL_ID:
+        record_message(message.author.id, message.guild.id)
 
-                # pass
-                if _current_leader.get(message.guild.id) == winner_id:
-                    pass
-                else:
-                    #thinb
-                    _current_leader[message.guild.id] = winner_id
+        # TOP CHATTER THING
+        if MVP_ROLE_ID:
+            mvp_role = message.guild.get_role(MVP_ROLE_ID)
+            if not mvp_role:
+                print("⚠️ MVP role not found in this guild!")
+            elif not message.guild.me.guild_permissions.manage_roles:
+                print("⚠️ Missing Manage Roles permission!")
+            else:
+                top = get_leaderboard_for_day(
+                    message.guild.id,
+                    dt.datetime.now(US_TZ).date(),
+                    limit=1
+                )
+                if top:
+                    winner_id, _ = top[0]
 
-                    winner = message.guild.get_member(winner_id) or await get_member_safe(message.guild, winner_id)
-                    if winner:
-                        # supplant
-                        for member in message.guild.members:
-                            if member.id != winner.id and mvp_role in member.roles:
+                    if _current_leader.get(message.guild.id) != winner_id:
+                        _current_leader[message.guild.id] = winner_id
+
+                        winner = message.guild.get_member(winner_id) or await get_member_safe(message.guild, winner_id)
+                        if winner:
+                            # remove from others
+                            for member in message.guild.members:
+                                if member.id != winner.id and mvp_role in member.roles:
+                                    try:
+                                        await member.remove_roles(mvp_role, reason="Leader changed")
+                                    except discord.Forbidden:
+                                        pass
+
+                            # add to winner
+                            if mvp_role not in winner.roles:
                                 try:
-                                    await member.remove_roles(mvp_role, reason="Leader changed")
+                                    await winner.add_roles(mvp_role, reason="Currently #1 in leaderboard")
                                 except discord.Forbidden:
                                     pass
 
-                        # consecrste
-                        if mvp_role not in winner.roles:
-                            try:
-                                await winner.add_roles(mvp_role, reason="Currently #1 in leaderboard")
-                            except discord.Forbidden:
-                                pass
+                            # announce
+                            channel = message.guild.get_channel(TRACK_CHANNEL_ID) or message.guild.system_channel
+                            if channel and channel.permissions_for(message.guild.me).send_messages:
+                                try:
+                                    await channel.send(
+                                        random.choice(msg3).format(mvp=mvp_role.mention, winner=winner.mention)
+                                    )
+                                except discord.HTTPException:
+                                    pass
 
-                        # announce
-                        channel = message.guild.get_channel(TRACK_CHANNEL_ID) or message.guild.system_channel
-                        if channel and channel.permissions_for(message.guild.me).send_messages:
-                            await channel.send(
-                                random.choice(msg3).format(mvp=mvp_role.mention, winner=winner.mention)
-                            )
+    # Process commands everywhere
     await bot.process_commands(message)
 
 Lmsg=[
@@ -302,6 +305,13 @@ async def on_user_update(before: discord.User, after: discord.User):
     if b_id == a_id:
         return
 
+    # simple per-user cooldown (seconds)
+    now_ts = dt.datetime.now().timestamp()
+    last = _last_user_update.get(after.id, 0)
+    if now_ts - last < 10:
+        return
+    _last_user_update[after.id] = now_ts
+
     guild = bot.get_guild(MY_GUILD_ID)
     if not guild:
         return
@@ -317,16 +327,18 @@ async def on_user_update(before: discord.User, after: discord.User):
     member = guild.get_member(after.id) or await get_member_safe(guild, after.id)
     mention = member.mention if member else f"<@{after.id}>"
 
-    if a_id == MY_GUILD_ID:
-        msg = random.choice(EQUIP_MESSAGES).format(mention=mention)
-        await channel.send(msg)
-        return
+    try:
+        if a_id == MY_GUILD_ID:
+            msg = random.choice(EQUIP_MESSAGES).format(mention=mention)
+            await channel.send(msg)
+            return
 
-    if b_id == MY_GUILD_ID and a_id != MY_GUILD_ID:
-        msg = random.choice(REMOVE_MESSAGES).format(mention=mention)
-        await channel.send(msg)
-        return
-
+        if b_id == MY_GUILD_ID and a_id != MY_GUILD_ID:
+            msg = random.choice(REMOVE_MESSAGES).format(mention=mention)
+            await channel.send(msg)
+            return
+    except discord.HTTPException:
+        pass
 
 #Daily+Slash commands thing hehehehe
 msg2= [
@@ -398,7 +410,6 @@ msg2= [
     "<:Bento:1374428015500726302> ",
     "<:head:1373755448410243072> ",
     "In a coat of gold or a coat of red, the lion still has <:balls:1370161168622162121>. \n mine are large, and bold my lord. As large and bold as yours "
-
 ]
 
 now = dt.datetime.now(US_TZ)
@@ -438,7 +449,6 @@ def build_daily_table(guild: discord.Guild) -> str | None:
 
     return table
 
-
 # DAILY (slash command)
 @bot.tree.command(name="daily", description="Show today's jobless lot (only for main-chat).")
 async def daily_cmd(interaction: discord.Interaction):
@@ -451,10 +461,7 @@ async def daily_cmd(interaction: discord.Interaction):
         return
     await interaction.response.send_message(table)
 
-
 # --- HOURLY (simple: fire once on boot, then every hour) ---
-ANNOUNCE_CHANNEL_ID = 1369502239156207619
-
 
 @tasks.loop(hours=1, reconnect=True)
 async def announce_leaderboard2():
@@ -497,6 +504,37 @@ async def announce_leaderboard2():
 async def _wait_hourly_ready2():
     await bot.wait_until_ready()
 
+async def post_hourly_once():
+    now = dt.datetime.now(US_TZ)
+    today = now.date()
+    unix_reset = int((now + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+
+    for guild in bot.guilds:
+        rows = get_leaderboard_for_day(guild.id, today, limit=20)
+        if not rows:
+            continue
+
+        lines = []
+        for i, (uid, cnt) in enumerate(rows, 1):
+            member = guild.get_member(uid)
+            name = member.mention if member else f"<@{uid}>"
+            lines.append(f"**{i}.** {name} — {cnt}")
+
+        embed = discord.Embed(
+            title=f"~THE HALL OF SHAME~(Resets <t:{unix_reset}:R>): \n(-# aka hourly update for today's 'messages' leaderboard)",
+            description="\n".join(lines)+"\n\n"+'🎗️ ' + random.choice(msg2) + ' 🎗️',
+            color=discord.Color.green()
+        )
+
+        channel = (
+            guild.get_channel(ANNOUNCE_CHANNEL_ID)
+            or guild.system_channel
+            or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
+        )
+        if channel and channel.permissions_for(guild.me).send_messages:
+            await channel.send(embed=embed)
+            log.info(f"[boot] posted in {guild.name} #{channel.name}")
+
 # Tag Totaller 4000 first of its name blablabla (im proud of ts)
 
 async def tagged_count(interaction: discord.Interaction): #helper, ignore if you want
@@ -515,8 +553,6 @@ async def tagged_count(interaction: discord.Interaction): #helper, ignore if you
             count += 1
     msg = f"Loyalists with the 'balls' tag equipped: **{count}**"
     await interaction.response.send_message(msg)
-
-
 
 # THE COMMAND
 @bot.tree.command(name="tagged_count", description="Count the number of loyalists with the tag equipped.")
@@ -602,6 +638,14 @@ async def start_hourly(interaction: discord.Interaction):
         await interaction.response.send_message("OPEN THE GATES.", ephemeral=True)
     else:
         await interaction.response.send_message("cant do.", ephemeral=True)
+
+@bot.tree.command(name="announce_now", description="(Owner) Post the leaderboard once, now.")
+async def announce_now(interaction: discord.Interaction):
+    if interaction.user.id != OWNER_ID:
+        await interaction.response.send_message("Nope. King only, hands off knave.", ephemeral=True)
+        return
+    await post_hourly_once()
+    await interaction.response.send_message("Sent.", ephemeral=True)
 
 # THE BOOTING, thank you for reading thru my slop :)
 webserver.keep_alive()
