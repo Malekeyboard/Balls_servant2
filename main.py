@@ -1,4 +1,4 @@
-# main.py  (compact)
+#PREP
 import os, sqlite3, random, logging, datetime as dt
 from contextlib import closing
 import pytz, discord, webserver
@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from discord import app_commands, ui
 from discord.ext import commands, tasks
 
-# ---------- config ----------
+#retarded variables (pardon my ocd)
 LEADERBOARD_LIMIT=20
 TRACK_CHANNEL_ID=1369502239156207619
 MVP_ROLE_ID=1419902849130954874
@@ -20,7 +20,7 @@ DB_PATH=os.path.join(os.path.dirname(__file__),"discord_daily.db")
 load_dotenv(); TOKEN=os.getenv("DISCORD_TOKEN")
 logging.basicConfig(level=logging.INFO); log=logging.getLogger("balls-bot")
 
-# ---------- bot ----------
+#configure i stole from the wiki 
 intents=discord.Intents.default(); intents.message_content=True; intents.members=True
 class BallsBot(commands.Bot):
     async def setup_hook(self):
@@ -40,7 +40,7 @@ class BallsBot(commands.Bot):
         except Exception as e: log.exception(f"initial hourly post failed: {e}")
 bot=BallsBot(command_prefix="!", intents=intents)
 
-# ---------- db ----------
+# sql databases (https://www.youtube.com/watch?v=W_belnWXFhE&pp=ygUhaG93IHRvIG1ha2UgYSBkYXRhYmFzZSBpbiBkaXNjb3Jk is really cool go check 'im out)
 def db():
     c=sqlite3.connect(DB_PATH); c.row_factory=sqlite3.Row; return c
 def ensure_db():
@@ -64,14 +64,14 @@ def get_leaderboard_for_day(gid:int,the_day:dt.date,limit:int=LEADERBOARD_LIMIT)
                          (gid,the_day.isoformat(),limit))
         return [(r["user_id"],r["count"]) for r in cur.fetchall()]
 
-# ---------- helpers ----------
+#Helper thing i stole from reddit
 _current_leader:dict[int,int]={}
 async def get_member_safe(guild:discord.Guild,user_id:int):
     m=guild.get_member(user_id)
     if m: return m
     try: return await guild.fetch_member(user_id)
     except (discord.NotFound,discord.Forbidden): return None
-
+#MESSAGES EHHEHEHE
 msg3=[
 "Congratulations to the new bearer of {mvp}, {winner}!. We are *soo* proud of you! Now log off and go take a fucking shower you moron.",
 "{winner} is now the new holder of {mvp}! It stinks in here.","{winner} YOINKED the {mvp} role! Good job (?)",
@@ -161,7 +161,7 @@ msg2=[
 "In a coat of gold or a coat of red, the lion still has <:balls:1370161168622162121>. \n mine are large, and bold my lord. As large and bold as yours "
 ]
 
-# ---------- events ----------
+# Evenets + crowning
 @bot.event
 async def on_message(message:discord.Message):
     if message.author.bot or not message.guild: return
@@ -217,7 +217,7 @@ async def on_user_update(before:discord.User,after:discord.User):
         if b_id==MY_GUILD_ID and a_id!=MY_GUILD_ID: await ch.send(random.choice(REMOVE_MESSAGES).format(mention=mention)); return
     except discord.HTTPException: pass
 
-# ---------- leaderboard helpers ----------
+#THE LEADERBOARD DUN DUNDUN *insert lord of the rings score*
 def build_daily_table(g:discord.Guild):
     rows=get_leaderboard_for_day(g.id,dt.datetime.now(US_TZ).date())
     if not rows: return None
@@ -234,7 +234,7 @@ def build_daily_table(g:discord.Guild):
     if g.get_channel(TRACK_CHANNEL_ID): table+=random.choice(msg2)+f"\n\n(resets <t:{reset_ts()}:R>)"
     return table
 
-# ---------- loops ----------
+#hourly
 @tasks.loop(minutes=1)
 async def clear_leaderboard_daily():
     now=dt.datetime.now(US_TZ)
@@ -272,7 +272,7 @@ async def post_hourly_once():
         ch=g.get_channel(ANNOUNCE_CHANNEL_ID) or g.system_channel or next((c for c in g.text_channels if c.permissions_for(g.me).send_messages),None)
         if ch and ch.permissions_for(g.me).send_messages: await ch.send(embed=embed); log.info(f"[boot] posted in {g.name} #{ch.name}")
 
-# ---------- slash cmds ----------
+# very peak commands
 @bot.tree.command(name="daily", description="Show today's jobless lot (only for main-chat).")
 async def daily_cmd(interaction:discord.Interaction):
     t=build_daily_table(interaction.guild)
@@ -334,7 +334,7 @@ async def announce_now(interaction:discord.Interaction):
     if interaction.user.id!=OWNER_ID: await interaction.response.send_message("Nope. King only, hands off knave.",ephemeral=True); return
     await post_hourly_once(); await interaction.response.send_message("Sent.",ephemeral=True)
 
-# ---------- boot ----------
+# AD ASTRA! INFINITUM! THANK YOU FOR READING THROUGH MY SLOP :DDD i hope i never have to touch this accursed thing EVER again
 webserver.keep_alive()
 if __name__=="__main__":
     ensure_db(); bot.run(TOKEN)
