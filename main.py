@@ -156,9 +156,8 @@ msg2=[
 "Think, Mark! You'll outlast every fragile, insignificant being on this planet. You'll live to see this world crumble to dust and blow away! Everyone and everything you know will be gone!",
 "CEECILLL! I NEED YOU CECIIIL!","youre all fucking welcome *bri'ish yap*",
 "I don't make mistakes, I'm not just like the rest of you. I'm stronger, I'm smarter, I- I'm better! I AM BETTER!!",
-"<:balls:1370161168622162121>","<:avocado:1371645911968780288> *ngh*","Prepare yourselves",
-"<:Bento:1374428015500726302> ","<:head:1373755448410243072> ",
-"In a coat of gold or a coat of red, the lion still has <:balls:1370161168622162121>. \n mine are large, and bold my lord. As large and bold as yours "
+"<:balls:1370161168622162121>","<:avocado:1371645911968780288> *ngh*","Prepare yourselves","<:head:1373755448410243072> ",
+"In a coat of gold or a coat of red, the lion still has <:balls:1370161168622162121>. \n Mine are large, and bold my lord. As large and bold as yours "
 ]
 
 # Evenets + crowning
