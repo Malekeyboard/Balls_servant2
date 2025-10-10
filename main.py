@@ -78,7 +78,7 @@ msg3=[
 "Congratulations {winner}, you now *rightfully* own {mvp}. Tread lightly",
 "Congratulations {winner}, you now *rightfully* own {mvp}. The crown is still slick with the blood of its previous owner...",
 "I hereby consecrate {winner} with the mantle of {mvp}. Did i sound cool here? Sorry, i just finished game of thrones",
-"{mvp} now belongs to {winner}!!!!! The queen is proud...But your enemies?"
+"{mvp} now belongs to {winner}!!!!!"
 ]
 
 Lmsg=[
@@ -88,10 +88,10 @@ Lmsg=[
 'Shi was corny af am i right? I MEAN, NOPE. SORRY, I WAS NOT SUPPOSED TO- BYE..BYE THANKS FOR JOINING BY-BYE AAHHHH *scraping noises*'
 ]
 CHLmg=[
-"Bye bye **{mention}**({user})! (they left the server) That was for courtesy...Your absence affects us not, DESERTER!",
-"**{mention}**({user}) left the server :(. Bye bye craven",
+"Bye bye **{mention}**({user})! (they left the server) \n\n*That was for courtesy. If truth be told, your absence affects us not*\n **DESERTER!**",
+"**{mention}**({user}) left the server :(. \n\n *Bye bye craven*",
 "**{mention}**({user}) just left the server...Another one bites the dust, but i think of it as self pruning.",
-"ta-ta **{mention}**({user}). Good riddance. (they left the server >:( )",
+"ta-ta **{mention}**({user}). *Good riddance.* (they left the server >:( )",
 "**{mention}**({user}) LEFT THE SERVER <:testicular_torsion:1373719974513741974>  "
 ]
 
