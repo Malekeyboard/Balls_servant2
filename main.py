@@ -20,7 +20,7 @@ DB_PATH=os.path.join(os.path.dirname(__file__),"discord_daily.db")
 load_dotenv(); TOKEN=os.getenv("DISCORD_TOKEN")
 logging.basicConfig(level=logging.INFO); log=logging.getLogger("balls-bot")
 
-#configure i stole from the wiki 
+#configure i stole from the wiki
 intents=discord.Intents.default(); intents.message_content=True; intents.members=True
 class BallsBot(commands.Bot):
     async def setup_hook(self):
@@ -88,11 +88,26 @@ Lmsg=[
 'Shi was corny af am i right? I MEAN, NOPE. SORRY, I WAS NOT SUPPOSED TO- BYE..BYE THANKS FOR JOINING BY-BYE AAHHHH *scraping noises*'
 ]
 CHLmg=[
-"Bye bye **{mention}**({user})! (they left the server) \n\n*That was for courtesy. If truth be told, your absence affects us not*\n **DESERTER!**",
+"Bye bye **{mention}**({user})! (they left the server) \n\n*That was for courtesy. If truth be told, your absence affects us not,*\n **DESERTER!**",
 "**{mention}**({user}) left the server :(. \n\n *Bye bye craven*",
 "**{mention}**({user}) just left the server...Another one bites the dust, but i think of it as self pruning.",
 "ta-ta **{mention}**({user}). *Good riddance.* (they left the server >:( )",
-"**{mention}**({user}) LEFT THE SERVER <:testicular_torsion:1373719974513741974>  "
+"**{mention}**({user}) LEFT THE SERVER <:testicular_torsion:1373719974513741974>",
+"Good...Goodbye, **{mention}**({user}). We will miss you 🥺. \n\n*nah who am i kidding, we probably wont lmao*",
+"ta-ta **{mention}**({user}). It grieves us to see you go \n\n *formalities aside, i think this was a WELL deserved death*"
+]
+
+files=[
+    "bale.gif",
+    "eek.gif",
+    "eek2.gif",
+    "eek3.gif",
+    "eek4.gif",
+    "eek5.gif",
+    "eek6.gif",
+    "eek7.gif",
+    "eek8.gif",
+    "eek9.gif",
 ]
 
 EQUIP_MESSAGES=[
@@ -115,12 +130,12 @@ REMOVE_MESSAGES=[
 "{mention} removed their <:balls:1370161168622162121> tag. THE COURT DECLARES HERESY...SEND THEM TO THE fucking DEPTHS",
 "{mention} chopped off their <:balls:1370161168622162121> (removed their tag 🤮), shame at will<:NOBALLS:1374428047205339186> .",
 "{mention} has lost their <:balls:1370161168622162121>… how embarrassing.",
-"{mention} wasn't brave enough and removed their tag <:Revoked:1374428028607795220>. prepare the stick",
+"{mention} removed their tag <:Revoked:1374428028607795220>. prepare the stick",
 "SORRY FOR INTERRUPTING YOUR CONVERSATION BUT I JUST WANT TO CALL OUT {mention} FOR REMOVING THEIR <:balls:1370161168622162121>. a coward's move...and disgraceful<:Revoked:1374428028607795220> ",
 "{mention} WHY DID YOU REMOVE? WHY DID YOU REMOVE THE TAG? *kicks and screams*",
 "{mention} just castrated themselves (removed their <:balls:1370161168622162121> tag. Yucky)",
 "ATTENTION! NOTICE! VERY IMPORTANT! {mention} over here just chopped off their <:balls:1370161168622162121>. Prepare the tickle chamber.",
-"Once, {mention} banished Dark, and all that stemmed from their conscience by equipping a certain tag (<:balls:1370161168622162121>). And their conscience assumed a fleeting form. These are the roots of our world. Despite it all, no matter how tender, how exquisite... A lie will remain a lie!...PUT THE TAG BACK ON, {mention} ",
+"Once, {mention} banished Dark, and all that stemmed from their conscience by equipping a certain tag (<:balls:1370161168622162121>). And with this, their conscience assumed a fleeting form. Despite it all, no matter how tender, how exquisite... A lie will remain a lie!...PUT THE TAG BACK ON, {mention} ",
 "{mention}, grow a pair of balls you coward. (Removed Tag)",
 "{mention} left the faith...(Unequipped their tag). The cul- i mean club will not miss them<:noballs:1371881387027861656> .",
 "PLEASE....{mention} PLEASE PUT...\nPLEASE PUT THE TAG BACK ON, PLEASE...PLEASE. PLEAAASE.\n WE'RE SORRY...\nwe're sorry. \nwe're sorry. \nI SAID WE'RE SORRY.\n...put the *fucking* tag back on, {mention}... \n",
@@ -194,7 +209,7 @@ async def on_member_remove(member:discord.Member):
     try: await member.send(random.choice(Lmsg).format(mention=member.mention))
     except discord.Forbidden: print("Couldn't DM the user (forbidden).")
     ch=member.guild.get_channel(1369502239156207619)
-    if ch: await ch.send(random.choice(CHLmg).format(mention=member.name,user=member.mention),file=discord.File("bale.gif"),reference=None)
+    if ch: await ch.send(random.choice(CHLmg).format(mention=member.name,user=member.mention),file=discord.File(random.choice(files)),reference=None)
 
 _last_user_update:dict[int,float]={}
 @bot.event
