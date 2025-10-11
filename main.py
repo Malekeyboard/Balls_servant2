@@ -113,7 +113,7 @@ files=[
 EQUIP_MESSAGES=[
 "{mention} just equipped <:balls:1370161168622162121> as their profile tag! PRAISE THE BALLLS!!!",
 "{mention} equipped <:balls:1370161168622162121> as their server tag :D. This is the way.",
-"All hail {mention} for bearing our sacred <:balls:1370161168622162121> tag. May your L's be few and your bitches's many.<:Spooky:1374429245153087549> ",
+"All hail {mention} for bearing our sacred <:balls:1370161168622162121> tag. May your L's be few and your bitches many.<:Spooky:1374429245153087549> ",
 "Ey {mention}, thanks for equipping our tag >:)","Welcome to the faith, {mention}! (ty for equipping our tag)",
 "THANKS FOR USING <:balls:1370161168622162121> AS YOUR PROFILE TAG, {mention}!","{mention} just equipped <:balls:1370161168622162121> as their profile tag. (+based +cool)",
 "{mention} just equipped <:balls:1370161168622162121> as their profile tag. HEHEHEHAW",
